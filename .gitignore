@@ -1,0 +1,33 @@
+# Maven
+target/
+*.iml
+.idea/
+.classpath
+.project
+.settings/
+bin/
+
+# Node / UniApp
+node_modules/
+unpackage/
+dist/
+
+# Large Files / Uploads
+backend/uploads/videos/
+backend/uploads/audios/
+# backend/uploads/images/ # Keeping images might be okay for UI
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+logs/
+temp/
