@@ -49,7 +49,7 @@
           class="recommend-item card"
           @click="goResourceDetail(item.id)"
         >
-          <image :src="item.coverUrl" mode="aspectFill" class="cover"></image>
+          <image :src="resolveCoverUrl(item.coverUrl)" mode="aspectFill" class="cover"></image>
           <view class="info">
             <text class="resource-title text-ellipsis-2">{{ item.title }}</text>
             <view class="meta">
@@ -99,6 +99,9 @@
 <script>
 import { getUserInfo } from '@/api/auth'
 import { getResourceList } from '@/api/resource'
+import { getApiBaseUrl } from '@/utils/request'
+
+const DEFAULT_COVER = '/static/images/resource-default-cover.png'
 
 export default {
   data() {
@@ -195,6 +198,17 @@ export default {
         4: '课程'
       }
       return typeMap[type] || '资源'
+    },
+
+    resolveCoverUrl(url) {
+      if (!url) return DEFAULT_COVER
+      if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
+        return url
+      }
+      if (url.startsWith('/')) {
+        return getApiBaseUrl() + url
+      }
+      return getApiBaseUrl() + '/' + url
     }
   }
 }

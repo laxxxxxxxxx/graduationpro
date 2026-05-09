@@ -44,7 +44,7 @@
           <video 
             class="video"
             :src="resolveUrl(resource.mediaUrl)" 
-            :poster="resolveUrl(resource.coverUrl)"
+            :poster="resolveCoverUrl(resource.coverUrl)"
             controls
             show-center-play-btn
             object-fit="contain"
@@ -67,10 +67,7 @@
       <view class="audio-section" v-if="resource.type === 3">
         <view class="audio-player" v-if="resource.mediaUrl">
           <view class="audio-card">
-            <image class="audio-cover" v-if="resource.coverUrl" :src="resolveUrl(resource.coverUrl)" mode="aspectFill"></image>
-            <view class="audio-cover-placeholder" v-else>
-              <text class="audio-icon">🎵</text>
-            </view>
+            <image class="audio-cover" :src="resolveCoverUrl(resource.coverUrl)" mode="aspectFill"></image>
             <view class="audio-info">
               <text class="audio-title">{{ resource.title }}</text>
               <text class="audio-duration" v-if="resource.duration">时长: {{ formatDuration(resource.duration) }}</text>
@@ -79,7 +76,7 @@
                 style="width: 100%; margin-top: 10px;"
                 :src="resolveUrl(resource.mediaUrl)"
                 :name="resource.title"
-                :poster="resolveUrl(resource.coverUrl)"
+                :poster="resolveCoverUrl(resource.coverUrl)"
                 controls
               ></audio>
             </view>
@@ -104,7 +101,7 @@
           <video 
             class="video"
             :src="resolveUrl(resource.mediaUrl)" 
-            :poster="resolveUrl(resource.coverUrl)"
+            :poster="resolveCoverUrl(resource.coverUrl)"
             controls
             show-center-play-btn
             object-fit="contain"
@@ -165,6 +162,7 @@
 
       <!-- 空评论 -->
       <view class="comment-empty" v-else>
+        <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
         <text class="empty-text">暂无评论，来发表第一条评论吧~</text>
       </view>
 
@@ -216,6 +214,8 @@
 <script>
 import { getResourceDetail, recordStudy, toggleLike, toggleFavorite, getComments, addComment, deleteComment } from '@/api/resource'
 import { getApiBaseUrl } from '@/utils/request'
+
+const DEFAULT_COVER = '/static/images/resource-default-cover.png'
 
 export default {
   data() {
@@ -425,6 +425,11 @@ export default {
         return false
       }
       return true
+    },
+
+    resolveCoverUrl(url) {
+      if (!url) return DEFAULT_COVER
+      return this.resolveUrl(url)
     },
 
     // 解析URL
@@ -932,8 +937,15 @@ export default {
   .comment-empty {
     text-align: center;
     padding: 60rpx 0;
+
+    .empty-image {
+      width: 220rpx;
+      height: 170rpx;
+      margin-bottom: $spacing-sm;
+    }
     
     .empty-text {
+      display: block;
       font-size: $font-sm;
       color: $text-tertiary;
     }

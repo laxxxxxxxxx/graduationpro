@@ -39,9 +39,18 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     // 兴趣标签时间窗口（天）
     private static final int INTEREST_DAYS = 30;
+
+    private static final int MAX_TOP_N = 50;
+    private static final int RATING_TYPE_VIEW = 1;
+    private static final double SCORE_VIEW = 1.0;
+    private static final double DEFAULT_RATING_WEIGHT = 1.0;
     
     @Override
     public List<Map<String, Object>> getPersonalizedRecommendations(Long userId, int topN) {
+        topN = normalizeTopN(topN);
+        if (topN == 0) {
+            return Collections.emptyList();
+        }
         log.info("为用户{}生成个性化推荐，数量: {}", userId, topN);
         
         // 使用四路混合推荐算法，获取更多候选资源
@@ -51,21 +60,21 @@ public class RecommendationServiceImpl implements RecommendationService {
         enrichWithResourceDetails(recommendations);
         
         // 多样性过滤：避免同类型资源过多
-        recommendations = applyDiversityFilter(recommendations);
+        recommendations = applyDiversityFilter(recommendations, topN);
         
         // 如果推荐数量不足，先用心理画像推荐补充
         if (recommendations.size() < topN) {
             log.info("推荐数量不足({}<{})，使用心理画像推荐补充", recommendations.size(), topN);
             List<Map<String, Object>> profileRecs = getProfileBasedRecommendations(userId, topN - recommendations.size());
             enrichWithResourceDetails(profileRecs);
-            recommendations.addAll(profileRecs);
+            appendMissingRecommendations(recommendations, profileRecs, topN);
         }
         
         // 仍然不足，使用热门资源补充
         if (recommendations.size() < topN) {
             log.info("推荐数量仍不足，使用热门资源补充");
             List<Map<String, Object>> hotResources = getHotResources(userId, topN - recommendations.size());
-            recommendations.addAll(hotResources);
+            appendMissingRecommendations(recommendations, hotResources, topN);
         }
         
         // 保存推荐结果到数据库
@@ -78,6 +87,9 @@ public class RecommendationServiceImpl implements RecommendationService {
      * 获取热门资源作为补充推荐（冷启动兜底）
      */
     private List<Map<String, Object>> getHotResources(Long userId, int count) {
+        if (count <= 0) {
+            return Collections.emptyList();
+        }
         LambdaQueryWrapper<EducationResource> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EducationResource::getStatus, 1)
                .notInSql(EducationResource::getId, 
@@ -104,6 +116,10 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     @Override
     public List<Map<String, Object>> userBasedCollaborativeFiltering(Long userId, int topN) {
+        topN = normalizeTopN(topN);
+        if (topN == 0) {
+            return Collections.emptyList();
+        }
         log.info("执行基于用户的协同过滤推荐（带时间衰减）");
         
         List<Map<String, Object>> similarUsers = ratingMapper.findSimilarUsers(userId, 10);
@@ -136,7 +152,7 @@ public class RecommendationServiceImpl implements RecommendationService {
             }
         }
         
-        return resourceScores.entrySet().stream()
+        List<Map<String, Object>> results = resourceScores.entrySet().stream()
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                 .limit(topN)
                 .map(entry -> {
@@ -148,10 +164,16 @@ public class RecommendationServiceImpl implements RecommendationService {
                     return result;
                 })
                 .collect(Collectors.toList());
+        enrichWithResourceDetails(results);
+        return results;
     }
     
     @Override
     public List<Map<String, Object>> itemBasedCollaborativeFiltering(Long userId, int topN) {
+        topN = normalizeTopN(topN);
+        if (topN == 0) {
+            return Collections.emptyList();
+        }
         log.info("执行基于物品的协同过滤推荐（带时间衰减）");
         
         List<Map<String, Object>> userRatings = ratingMapper.getUserWeightedRatings(userId);
@@ -183,7 +205,7 @@ public class RecommendationServiceImpl implements RecommendationService {
             }
         }
         
-        return resourceScores.entrySet().stream()
+        List<Map<String, Object>> results = resourceScores.entrySet().stream()
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                 .limit(topN)
                 .map(entry -> {
@@ -195,10 +217,16 @@ public class RecommendationServiceImpl implements RecommendationService {
                     return result;
                 })
                 .collect(Collectors.toList());
+        enrichWithResourceDetails(results);
+        return results;
     }
     
     @Override
     public List<Map<String, Object>> contentBasedRecommendation(Long userId, int topN) {
+        topN = normalizeTopN(topN);
+        if (topN == 0) {
+            return Collections.emptyList();
+        }
         log.info("执行基于内容的推荐");
         
         List<Map<String, Object>> recommendations = ratingMapper.getContentBasedRecommendations(userId, topN);
@@ -222,6 +250,10 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     @Override
     public List<Map<String, Object>> getProfileBasedRecommendations(Long userId, int topN) {
+        topN = normalizeTopN(topN);
+        if (topN == 0) {
+            return Collections.emptyList();
+        }
         log.info("执行基于心理画像的推荐");
         
         List<Map<String, Object>> recommendations = ratingMapper.getProfileBasedRecommendations(userId, topN);
@@ -250,6 +282,10 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     @Override
     public List<Map<String, Object>> hybridRecommendation(Long userId, int topN) {
+        topN = normalizeTopN(topN);
+        if (topN == 0) {
+            return Collections.emptyList();
+        }
         log.info("执行四路混合推荐算法");
         
         // 1. 分别获取四种算法的推荐结果
@@ -307,6 +343,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 if (!reasons.contains(reason)) {
                     reasons.add(reason);
                 }
+                merged.put("algorithm", "hybrid");
             } else {
                 Map<String, Object> merged = new HashMap<>();
                 merged.put("resourceId", resourceId);
@@ -333,6 +370,14 @@ public class RecommendationServiceImpl implements RecommendationService {
         if (result != null) {
             result.setIsClicked(1);
             recommendationResultMapper.updateById(result);
+        }
+
+        try {
+            ratingMapper.upsertResourceRating(userId, resourceId, RATING_TYPE_VIEW, SCORE_VIEW, DEFAULT_RATING_WEIGHT);
+            ratingMapper.insertResourceBehaviorLog(userId, "click", resourceId, null);
+        } catch (Exception e) {
+            log.warn("记录推荐点击反馈失败: userId={}, resourceId={}, reason={}",
+                    userId, resourceId, e.getMessage());
         }
     }
     
@@ -407,10 +452,10 @@ public class RecommendationServiceImpl implements RecommendationService {
     /**
      * 多样性过滤：避免同一类型资源过多
      */
-    private List<Map<String, Object>> applyDiversityFilter(List<Map<String, Object>> recommendations) {
-        if (recommendations.size() <= 3) return recommendations;
+    private List<Map<String, Object>> applyDiversityFilter(List<Map<String, Object>> recommendations, int targetSize) {
+        if (recommendations.size() <= 1 || targetSize <= 0) return recommendations;
         
-        int maxSameType = (int) Math.ceil(recommendations.size() * MAX_SAME_TYPE_RATIO);
+        int maxSameType = Math.max(1, (int) Math.ceil(targetSize * MAX_SAME_TYPE_RATIO));
         Map<Integer, Integer> typeCount = new HashMap<>();
         List<Map<String, Object>> filtered = new ArrayList<>();
         List<Map<String, Object>> overflow = new ArrayList<>();
@@ -428,9 +473,13 @@ public class RecommendationServiceImpl implements RecommendationService {
             }
         }
         
-        // 如果过滤后太少，从溢出列表中补充
-        if (filtered.size() < 3 && !overflow.isEmpty()) {
-            filtered.addAll(overflow.subList(0, Math.min(overflow.size(), 3 - filtered.size())));
+        // 类型不够丰富时，用溢出项补足目标数量，避免为了多样性牺牲可用推荐数量。
+        int expectedSize = Math.min(targetSize, recommendations.size());
+        for (Map<String, Object> rec : overflow) {
+            if (filtered.size() >= expectedSize) {
+                break;
+            }
+            filtered.add(rec);
         }
         
         log.debug("多样性过滤: {}/{} 条保留", filtered.size(), recommendations.size());
@@ -505,5 +554,41 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
         
         log.info("为用户{}保存了{}条推荐结果", userId, recommendations.size());
+    }
+
+    private int normalizeTopN(int topN) {
+        if (topN <= 0) {
+            return 0;
+        }
+        return Math.min(topN, MAX_TOP_N);
+    }
+
+    private void appendMissingRecommendations(List<Map<String, Object>> target,
+                                              List<Map<String, Object>> additions,
+                                              int maxSize) {
+        if (target.size() >= maxSize || additions == null || additions.isEmpty()) {
+            return;
+        }
+        Set<Long> existingResourceIds = target.stream()
+                .map(this::extractResourceId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        for (Map<String, Object> rec : additions) {
+            Long resourceId = extractResourceId(rec);
+            if (resourceId == null || existingResourceIds.contains(resourceId)) {
+                continue;
+            }
+            target.add(rec);
+            existingResourceIds.add(resourceId);
+            if (target.size() >= maxSize) {
+                break;
+            }
+        }
+    }
+
+    private Long extractResourceId(Map<String, Object> rec) {
+        Object resourceId = rec.get("resourceId");
+        return resourceId instanceof Number ? ((Number) resourceId).longValue() : null;
     }
 }

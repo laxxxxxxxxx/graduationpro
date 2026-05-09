@@ -73,8 +73,8 @@
         :key="item.id"
         @click="goDetail(item)"
       >
-        <view class="resource-cover" v-if="item.coverUrl">
-          <image class="cover-img" :src="item.coverUrl" mode="aspectFill"></image>
+        <view class="resource-cover">
+          <image class="cover-img" :src="resolveCoverUrl(item.coverUrl)" mode="aspectFill"></image>
         </view>
         <view class="resource-info">
           <text class="title">{{ item.title }}</text>
@@ -106,7 +106,7 @@
     
     <!-- 空状态 -->
     <view class="empty" v-if="!loading && resources.length === 0">
-      <text class="empty-icon">📚</text>
+      <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
       <text class="empty-text">暂无资源</text>
       <text class="empty-hint">请选择其他分类或筛选条件</text>
     </view>
@@ -115,6 +115,9 @@
 
 <script>
 import { getResourceList, getCategories, searchResource } from '@/api/resource'
+import { getApiBaseUrl } from '@/utils/request'
+
+const DEFAULT_COVER = '/static/images/resource-default-cover.png'
 
 export default {
   data() {
@@ -282,6 +285,17 @@ export default {
         3: '高级'
       }
       return difficultyMap[difficulty] || ''
+    },
+
+    resolveCoverUrl(url) {
+      if (!url) return DEFAULT_COVER
+      if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
+        return url
+      }
+      if (url.startsWith('/')) {
+        return getApiBaseUrl() + url
+      }
+      return getApiBaseUrl() + '/' + url
     }
   }
 }
@@ -510,9 +524,9 @@ export default {
   text-align: center;
   padding: 100rpx 0;
   
-  .empty-icon {
-    display: block;
-    font-size: 100rpx;
+  .empty-image {
+    width: 260rpx;
+    height: 200rpx;
     margin-bottom: $spacing-md;
   }
   

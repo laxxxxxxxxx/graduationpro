@@ -3,6 +3,7 @@ package com.mentalhealth.module.resource.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mentalhealth.common.exception.BusinessException;
+import com.mentalhealth.module.recommendation.mapper.UserResourceRatingMapper;
 import com.mentalhealth.module.resource.entity.*;
 import com.mentalhealth.module.resource.mapper.*;
 import com.mentalhealth.module.resource.service.ResourceService;
@@ -19,6 +20,17 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class ResourceServiceImpl implements ResourceService {
+
+    private static final int RATING_TYPE_VIEW = 1;
+    private static final int RATING_TYPE_LIKE = 2;
+    private static final int RATING_TYPE_FAVORITE = 3;
+    private static final int RATING_TYPE_COMPLETE = 4;
+
+    private static final double SCORE_VIEW = 1.0;
+    private static final double SCORE_LIKE = 3.0;
+    private static final double SCORE_FAVORITE = 4.0;
+    private static final double SCORE_COMPLETE = 5.0;
+    private static final double DEFAULT_RATING_WEIGHT = 1.0;
     
     @Autowired
     private ResourceMapper resourceMapper;
@@ -40,6 +52,9 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private UserResourceRatingMapper ratingMapper;
     
     @Override
     public Page<EducationResource> getResourceList(Integer pageNum, Integer pageSize, Integer type, Integer categoryId) {
@@ -68,6 +83,8 @@ public class ResourceServiceImpl implements ResourceService {
         // 增加浏览量
         resource.setViewCount(resource.getViewCount() + 1);
         resourceMapper.updateById(resource);
+
+        recordPositiveFeedback(userId, id, RATING_TYPE_VIEW, SCORE_VIEW, "view", null);
 
         // 构建返回数据
         Map<String, Object> result = new HashMap<>();
@@ -137,6 +154,12 @@ public class ResourceServiceImpl implements ResourceService {
             record.setCompleted(record.getProgress() >= 100 ? 1 : 0);
             learningRecordMapper.updateById(record);
         }
+
+        if (progress != null && progress >= 100) {
+            recordPositiveFeedback(userId, resourceId, RATING_TYPE_COMPLETE, SCORE_COMPLETE, "complete", duration);
+        } else {
+            recordPositiveFeedback(userId, resourceId, RATING_TYPE_VIEW, SCORE_VIEW, "view", duration);
+        }
         
         log.info("用户{}学习资源{},进度{}%", userId, resourceId, progress);
     }
@@ -178,6 +201,7 @@ public class ResourceServiceImpl implements ResourceService {
             likeMapper.deleteById(existing.getId());
             resource.setLikeCount(Math.max(0, resource.getLikeCount() - 1));
             resourceMapper.updateById(resource);
+            removeFeedbackSignal(userId, resourceId, RATING_TYPE_LIKE);
             result.put("liked", false);
             result.put("likeCount", resource.getLikeCount());
         } else {
@@ -188,6 +212,7 @@ public class ResourceServiceImpl implements ResourceService {
             likeMapper.insert(like);
             resource.setLikeCount(resource.getLikeCount() + 1);
             resourceMapper.updateById(resource);
+            recordPositiveFeedback(userId, resourceId, RATING_TYPE_LIKE, SCORE_LIKE, "like", null);
             result.put("liked", true);
             result.put("likeCount", resource.getLikeCount());
         }
@@ -215,6 +240,7 @@ public class ResourceServiceImpl implements ResourceService {
             favoriteMapper.deleteById(existing.getId());
             resource.setFavoriteCount(Math.max(0, resource.getFavoriteCount() - 1));
             resourceMapper.updateById(resource);
+            removeFeedbackSignal(userId, resourceId, RATING_TYPE_FAVORITE);
             result.put("favorited", false);
             result.put("favoriteCount", resource.getFavoriteCount());
         } else {
@@ -225,6 +251,7 @@ public class ResourceServiceImpl implements ResourceService {
             favoriteMapper.insert(fav);
             resource.setFavoriteCount(resource.getFavoriteCount() + 1);
             resourceMapper.updateById(resource);
+            recordPositiveFeedback(userId, resourceId, RATING_TYPE_FAVORITE, SCORE_FAVORITE, "favorite", null);
             result.put("favorited", true);
             result.put("favoriteCount", resource.getFavoriteCount());
         }
@@ -339,5 +366,33 @@ public class ResourceServiceImpl implements ResourceService {
         resWrapper.in(EducationResource::getId, resourceIds);
         resWrapper.eq(EducationResource::getStatus, 1);
         return resourceMapper.selectList(resWrapper);
+    }
+
+    private void recordPositiveFeedback(Long userId, Long resourceId, Integer ratingType,
+                                        Double score, String behaviorType, Integer duration) {
+        if (userId == null || resourceId == null) {
+            return;
+        }
+        try {
+            ratingMapper.upsertResourceRating(userId, resourceId, ratingType, score, DEFAULT_RATING_WEIGHT);
+            if (behaviorType != null) {
+                ratingMapper.insertResourceBehaviorLog(userId, behaviorType, resourceId, duration);
+            }
+        } catch (Exception e) {
+            log.warn("记录资源推荐反馈失败: userId={}, resourceId={}, ratingType={}, reason={}",
+                    userId, resourceId, ratingType, e.getMessage());
+        }
+    }
+
+    private void removeFeedbackSignal(Long userId, Long resourceId, Integer ratingType) {
+        if (userId == null || resourceId == null) {
+            return;
+        }
+        try {
+            ratingMapper.deleteResourceRatingSignal(userId, resourceId, ratingType);
+        } catch (Exception e) {
+            log.warn("移除资源推荐反馈失败: userId={}, resourceId={}, ratingType={}, reason={}",
+                    userId, resourceId, ratingType, e.getMessage());
+        }
     }
 }

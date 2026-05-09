@@ -41,6 +41,7 @@
       </view>
       
       <view class="empty" v-if="!loading && posts.length === 0">
+        <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
         <text>暂无帖子</text>
       </view>
     </view>
@@ -315,5 +316,15 @@ export default {
   padding: 100rpx 0;
   color: $text-tertiary;
   font-size: $font-md;
+
+  .empty-image {
+    width: 260rpx;
+    height: 200rpx;
+    margin-bottom: $spacing-md;
+  }
+
+  text {
+    display: block;
+  }
 }
 </style>

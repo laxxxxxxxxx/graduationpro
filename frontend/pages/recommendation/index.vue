@@ -77,7 +77,7 @@
     
     <!-- 空状态 -->
     <view class="empty" v-else-if="!loading">
-      <text class="empty-icon">📚</text>
+      <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
       <text class="empty-text">暂无推荐内容</text>
       <text class="empty-hint">多浏览、点赞资源，让我们更了解您</text>
       <view class="refresh-btn-empty" @click="refreshTags">
@@ -334,9 +334,9 @@ export default {
   text-align: center;
   padding: 100rpx 0;
   
-  .empty-icon {
-    display: block;
-    font-size: 100rpx;
+  .empty-image {
+    width: 260rpx;
+    height: 200rpx;
     margin-bottom: $spacing-md;
   }
   

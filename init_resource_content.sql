@@ -7,6 +7,22 @@
 USE mental_health;
 
 -- ============================================
+-- 0. 资源封面图 - 为已有资源补齐配图
+-- ============================================
+UPDATE education_resource SET cover_url = '/uploads/images/exam-anxiety-cover.png' WHERE title = '如何应对考试焦虑';
+UPDATE education_resource SET cover_url = '/uploads/images/mindfulness-guide-cover.png' WHERE title = '正念冥想入门指南';
+UPDATE education_resource SET cover_url = '/uploads/images/communication-skills-cover.png' WHERE title = '人际关系沟通技巧';
+UPDATE education_resource SET cover_url = '/uploads/images/career-planning-cover.png' WHERE title = '职业生涯规划指导';
+UPDATE education_resource SET cover_url = '/uploads/images/emotion-abc-cover.png' WHERE title = '情绪管理ABC理论';
+UPDATE education_resource SET cover_url = '/uploads/images/sleep-improvement-cover.png' WHERE title = '睡眠改善实用方法';
+UPDATE education_resource SET cover_url = '/uploads/images/depression-coping-cover.png' WHERE title = '抑郁情绪的识别与应对';
+UPDATE education_resource SET cover_url = '/uploads/images/time-management-cover.png' WHERE title = '时间管理与学习效率';
+UPDATE education_resource SET cover_url = '/uploads/images/love-psychology-cover.png' WHERE title = '恋爱心理学基础';
+UPDATE education_resource SET cover_url = '/uploads/images/self-care-cover.png' WHERE title = '压力下的自我关怀';
+UPDATE education_resource SET cover_url = '/uploads/images/social-anxiety-cover.png' WHERE title = '社交恐惧的克服方法';
+UPDATE education_resource SET cover_url = '/uploads/images/positive-psychology-cover.png' WHERE title = '积极心理学实践';
+
+-- ============================================
 -- 1. 文章类资源 - 更新完整HTML内容和简介
 -- ============================================
 

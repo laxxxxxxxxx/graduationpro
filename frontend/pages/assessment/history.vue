@@ -84,7 +84,7 @@
       </view>
       
       <view class="empty" v-if="reports.length === 0 && !loading">
-        <text class="empty-icon">📝</text>
+        <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
         <text class="empty-text">暂无测评记录</text>
         <button class="go-test-btn" @click="goTest">去完成第一次测评</button>
       </view>
@@ -467,12 +467,10 @@ export default {
   text-align: center;
   padding: 120rpx 40rpx;
   
-  .empty-icon {
-    display: block;
-    font-size: 120rpx;
+  .empty-image {
+    width: 280rpx;
+    height: 220rpx;
     margin-bottom: $spacing-lg;
-    filter: grayscale(1);
-    opacity: 0.3;
   }
   
   .empty-text {

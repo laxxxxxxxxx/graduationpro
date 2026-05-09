@@ -7,7 +7,6 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 import java.util.Map;
@@ -19,10 +18,12 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
      * 获取用户对资源的加权评分（带时间衰减）
      * 时间衰减公式: score * weight / (1 + 0.01 * 距今天数)
      */
-    @Select("SELECT resource_id, SUM(score * weight / (1 + 0.01 * DATEDIFF(NOW(), created_at))) as total_score " +
-            "FROM user_resource_rating " +
-            "WHERE user_id = #{userId} " +
-            "GROUP BY resource_id " +
+    @Select("SELECT urr.resource_id, SUM(urr.score * urr.weight / (1 + 0.01 * DATEDIFF(NOW(), urr.created_at))) as total_score " +
+            "FROM user_resource_rating urr " +
+            "JOIN education_resource er ON urr.resource_id = er.id " +
+            "WHERE urr.user_id = #{userId} " +
+            "AND er.status = 1 " +
+            "GROUP BY urr.resource_id " +
             "ORDER BY total_score DESC")
     List<Map<String, Object>> getUserWeightedRatings(@Param("userId") Long userId);
     
@@ -61,6 +62,8 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
             "  SUM(score * weight / (1 + 0.01 * DATEDIFF(NOW(), created_at))) as score " +
             "  FROM user_resource_rating WHERE resource_id != #{resourceId} GROUP BY user_id, resource_id) r2_eff " +
             "ON r1_eff.user_id = r2_eff.user_id " +
+            "JOIN education_resource er ON r2_eff.resource_id = er.id " +
+            "WHERE er.status = 1 " +
             "GROUP BY r2_eff.resource_id " +
             "HAVING common_users >= 2 " +
             "ORDER BY similarity DESC " +
@@ -91,11 +94,13 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
             "SUM(uit.interest_score * rk.tfidf_score) as match_score " +
             "FROM education_resource er " +
             "JOIN resource_keywords rk ON er.id = rk.resource_id " +
-            "JOIN user_interest_tags uit ON rk.keyword = uit.tag_name " +
-            "WHERE uit.user_id = #{userId} " +
-            "AND er.status = 1 " +
+            "JOIN user_interest_tags uit ON uit.user_id = #{userId} " +
+            "AND (rk.keyword = uit.tag_name " +
+            "  OR rk.keyword LIKE CONCAT('%', uit.tag_name, '%') " +
+            "  OR uit.tag_name LIKE CONCAT('%', rk.keyword, '%')) " +
+            "WHERE er.status = 1 " +
             "AND er.id NOT IN (SELECT resource_id FROM user_resource_rating WHERE user_id = #{userId}) " +
-            "GROUP BY er.id " +
+            "GROUP BY er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty " +
             "ORDER BY match_score DESC " +
             "LIMIT #{topN}")
     List<Map<String, Object>> getContentBasedRecommendations(@Param("userId") Long userId, @Param("topN") int topN);
@@ -104,25 +109,26 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
      * 基于心理画像的推荐（冷启动/补充推荐）
      * 根据用户心理画像中的主要问题和水平匹配相关资源
      */
-    @Select("SELECT DISTINCT er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty, " +
-            "(CASE " +
+    @Select("SELECT er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty, " +
+            "MAX(CASE " +
             " WHEN upp.dominant_issues LIKE CONCAT('%', rk.keyword, '%') THEN 80 " +
-            " WHEN rk.keyword IN ('压力管理','焦虑缓解','情绪调节','放松技巧','正念冥想') " +
+            " WHEN rk.keyword IN ('压力管理','压力应对','焦虑','焦虑缓解','情绪调节','情绪管理','放松技巧','正念','冥想','正念冥想','减压') " +
             "   AND (upp.stress_level IN ('medium','high') OR upp.anxiety_level IN ('medium','high')) THEN 70 " +
-            " WHEN rk.keyword IN ('抑郁干预','情绪调节','积极心理学','自我关怀') " +
+            " WHEN rk.keyword IN ('抑郁','抑郁干预','情绪识别','情绪调节','情绪管理','积极心理学','自我关怀') " +
             "   AND upp.depression_level IN ('medium','high') THEN 70 " +
             " WHEN rk.keyword IN ('职业规划','就业指导','职业发展') " +
             "   AND upp.dominant_issues LIKE '%就业%' THEN 75 " +
             " WHEN rk.keyword IN ('时间管理','学习效率','考试焦虑') " +
             "   AND upp.dominant_issues LIKE '%学业%' THEN 75 " +
-            " ELSE 50 END) as match_score " +
+            " ELSE 0 END) as match_score " +
             "FROM user_psychological_profile upp " +
             "CROSS JOIN resource_keywords rk " +
             "JOIN education_resource er ON rk.resource_id = er.id " +
             "WHERE upp.user_id = #{userId} " +
             "AND er.status = 1 " +
             "AND er.id NOT IN (SELECT resource_id FROM user_resource_rating WHERE user_id = #{userId}) " +
-            "HAVING match_score >= 50 " +
+            "GROUP BY er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty " +
+            "HAVING match_score > 0 " +
             "ORDER BY match_score DESC " +
             "LIMIT #{topN}")
     List<Map<String, Object>> getProfileBasedRecommendations(@Param("userId") Long userId, @Param("topN") int topN);
@@ -192,6 +198,38 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
     void insertOrUpdateInterestTag(@Param("userId") Long userId, @Param("tagName") String tagName,
                                    @Param("source") String source, @Param("tagCategory") String tagCategory,
                                    @Param("interestScore") Double interestScore);
+
+    /**
+     * 写入或刷新用户对资源的隐式反馈信号。
+     */
+    @Insert("INSERT INTO user_resource_rating (user_id, resource_id, rating_type, score, weight, created_at) " +
+            "VALUES (#{userId}, #{resourceId}, #{ratingType}, #{score}, #{weight}, NOW()) " +
+            "ON DUPLICATE KEY UPDATE score=GREATEST(score, VALUES(score)), " +
+            "weight=VALUES(weight), created_at=NOW()")
+    void upsertResourceRating(@Param("userId") Long userId,
+                              @Param("resourceId") Long resourceId,
+                              @Param("ratingType") Integer ratingType,
+                              @Param("score") Double score,
+                              @Param("weight") Double weight);
+
+    /**
+     * 移除用户当前已撤销的强偏好信号，如取消点赞/收藏。
+     */
+    @Delete("DELETE FROM user_resource_rating " +
+            "WHERE user_id = #{userId} AND resource_id = #{resourceId} AND rating_type = #{ratingType}")
+    int deleteResourceRatingSignal(@Param("userId") Long userId,
+                                   @Param("resourceId") Long resourceId,
+                                   @Param("ratingType") Integer ratingType);
+
+    /**
+     * 记录资源行为明细，用于推荐效果分析和后续特征扩展。
+     */
+    @Insert("INSERT INTO user_behavior_log (user_id, behavior_type, target_type, target_id, duration, created_at) " +
+            "VALUES (#{userId}, #{behaviorType}, 'resource', #{resourceId}, #{duration,jdbcType=INTEGER}, NOW())")
+    void insertResourceBehaviorLog(@Param("userId") Long userId,
+                                   @Param("behaviorType") String behaviorType,
+                                   @Param("resourceId") Long resourceId,
+                                   @Param("duration") Integer duration);
 
     /**
      * 获取用户心理画像

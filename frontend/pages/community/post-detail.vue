@@ -44,6 +44,7 @@
           <text class="comment-content">{{ comment.content }}</text>
         </view>
         <view class="no-comment" v-if="comments.length === 0">
+          <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
           <text>暂无评论，来抢沙发吧~</text>
         </view>
       </view>
@@ -352,6 +353,16 @@ export default {
     padding: 80rpx 0;
     font-size: $font-sm;
     color: $text-tertiary;
+
+    .empty-image {
+      width: 220rpx;
+      height: 170rpx;
+      margin-bottom: $spacing-sm;
+    }
+
+    text {
+      display: block;
+    }
   }
 }
 

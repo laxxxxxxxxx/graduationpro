@@ -129,18 +129,18 @@ ALTER TABLE education_resource AUTO_INCREMENT = 1;
 -- 插入测试教育资源（不同主题和类型）
 -- 注意：这些资源的ID将从1开始连续分配（因为上面重置了AUTO_INCREMENT）
 INSERT INTO `education_resource` (`title`, `type`, `category_id`, `cover_url`, `content`, `duration`, `difficulty`, `tags`, `author`, `source`, `copyright_status`, `view_count`, `like_count`, `status`, `publish_time`) VALUES
-('如何应对考试焦虑', 1, 1, NULL, '<p>考试焦虑是大学生常见的心理问题...</p>', NULL, 1, '考试焦虑,压力管理,放松技巧', '心理咨询师A', '原创', 1, 150, 45, 1, NOW()),
-('正念冥想入门指南', 2, 2, NULL, 'https://video.example.com/mindfulness.mp4', 600, 1, '正念,冥想,放松,减压', '冥想导师B', '合作', 1, 280, 89, 1, NOW()),
-('人际关系沟通技巧', 1, 3, NULL, '<p>良好的人际关系对心理健康至关重要...</p>', NULL, 2, '人际交往,沟通技巧,社交', '心理学教授C', '原创', 1, 200, 67, 1, NOW()),
-('职业生涯规划指导', 1, 4, NULL, '<p>大学期间如何进行职业规划...</p>', NULL, 2, '职业规划,就业指导,未来发展', '职业咨询师D', '原创', 1, 320, 98, 1, NOW()),
-('情绪管理ABC理论', 2, 1, NULL, 'https://video.example.com/emotion-abc.mp4', 900, 2, '情绪管理,认知疗法,ABC理论', '心理学专家E', '合作', 1, 410, 125, 1, NOW()),
-('睡眠改善实用方法', 1, 2, NULL, '<p>良好的睡眠对心理健康的影响...</p>', NULL, 1, '睡眠,健康,生活习惯', '睡眠专家F', '原创', 1, 190, 56, 1, NOW()),
-('抑郁情绪的识别与应对', 2, 1, NULL, 'https://video.example.com/depression.mp4', 1200, 3, '抑郁,情绪识别,自我调节', '临床心理学家G', '合作', 1, 520, 178, 1, NOW()),
-('时间管理与学习效率', 1, 4, NULL, '<p>如何合理安排时间提高学习效率...</p>', NULL, 1, '时间管理,学习效率,自律', '学习顾问H', '原创', 1, 240, 72, 1, NOW()),
-('恋爱心理学基础', 2, 3, NULL, 'https://video.example.com/love.mp4', 1500, 2, '恋爱,情感,亲密关系', '情感咨询师I', '合作', 1, 680, 234, 1, NOW()),
-('压力下的自我关怀', 1, 2, NULL, '<p>在压力下如何照顾好自己...</p>', NULL, 1, '自我关怀,压力应对,心理健康', '心理咨询师J', '原创', 1, 175, 51, 1, NOW()),
-('社交恐惧的克服方法', 2, 3, NULL, 'https://video.example.com/social-anxiety.mp4', 1000, 2, '社交恐惧,焦虑,暴露疗法', '心理治疗师K', '合作', 1, 390, 115, 1, NOW()),
-('积极心理学实践', 1, 1, NULL, '<p>培养积极心态的方法...</p>', NULL, 2, '积极心理学,幸福感,乐观', '积极心理学专家L', '原创', 1, 310, 92, 1, NOW());
+('如何应对考试焦虑', 1, 1, '/uploads/images/exam-anxiety-cover.png', '<p>考试焦虑是大学生常见的心理问题...</p>', NULL, 1, '考试焦虑,压力管理,放松技巧', '心理咨询师A', '原创', 1, 150, 45, 1, NOW()),
+('正念冥想入门指南', 2, 2, '/uploads/images/mindfulness-guide-cover.png', 'https://video.example.com/mindfulness.mp4', 600, 1, '正念,冥想,放松,减压', '冥想导师B', '合作', 1, 280, 89, 1, NOW()),
+('人际关系沟通技巧', 1, 3, '/uploads/images/communication-skills-cover.png', '<p>良好的人际关系对心理健康至关重要...</p>', NULL, 2, '人际交往,沟通技巧,社交', '心理学教授C', '原创', 1, 200, 67, 1, NOW()),
+('职业生涯规划指导', 1, 4, '/uploads/images/career-planning-cover.png', '<p>大学期间如何进行职业规划...</p>', NULL, 2, '职业规划,就业指导,未来发展', '职业咨询师D', '原创', 1, 320, 98, 1, NOW()),
+('情绪管理ABC理论', 2, 1, '/uploads/images/emotion-abc-cover.png', 'https://video.example.com/emotion-abc.mp4', 900, 2, '情绪管理,认知疗法,ABC理论', '心理学专家E', '合作', 1, 410, 125, 1, NOW()),
+('睡眠改善实用方法', 1, 2, '/uploads/images/sleep-improvement-cover.png', '<p>良好的睡眠对心理健康的影响...</p>', NULL, 1, '睡眠,健康,生活习惯', '睡眠专家F', '原创', 1, 190, 56, 1, NOW()),
+('抑郁情绪的识别与应对', 2, 1, '/uploads/images/depression-coping-cover.png', 'https://video.example.com/depression.mp4', 1200, 3, '抑郁,情绪识别,自我调节', '临床心理学家G', '合作', 1, 520, 178, 1, NOW()),
+('时间管理与学习效率', 1, 4, '/uploads/images/time-management-cover.png', '<p>如何合理安排时间提高学习效率...</p>', NULL, 1, '时间管理,学习效率,自律', '学习顾问H', '原创', 1, 240, 72, 1, NOW()),
+('恋爱心理学基础', 2, 3, '/uploads/images/love-psychology-cover.png', 'https://video.example.com/love.mp4', 1500, 2, '恋爱,情感,亲密关系', '情感咨询师I', '合作', 1, 680, 234, 1, NOW()),
+('压力下的自我关怀', 1, 2, '/uploads/images/self-care-cover.png', '<p>在压力下如何照顾好自己...</p>', NULL, 1, '自我关怀,压力应对,心理健康', '心理咨询师J', '原创', 1, 175, 51, 1, NOW()),
+('社交恐惧的克服方法', 2, 3, '/uploads/images/social-anxiety-cover.png', 'https://video.example.com/social-anxiety.mp4', 1000, 2, '社交恐惧,焦虑,暴露疗法', '心理治疗师K', '合作', 1, 390, 115, 1, NOW()),
+('积极心理学实践', 1, 1, '/uploads/images/positive-psychology-cover.png', '<p>培养积极心态的方法...</p>', NULL, 2, '积极心理学,幸福感,乐观', '积极心理学专家L', '原创', 1, 310, 92, 1, NOW());
 
 -- 插入用户测评记录（不同结果）
 -- 使用子查询动态获取用户ID，避免硬编码导致的 FK 约束错误
@@ -251,6 +251,11 @@ INSERT INTO `resource_keywords` (`resource_id`, `keyword`, `tfidf_score`, `categ
 ((SELECT id FROM education_resource WHERE title='恋爱心理学基础'), '亲密关系', 0.85, 'problem'),
 ((SELECT id FROM education_resource WHERE title='社交恐惧的克服方法'), '社交恐惧', 0.92, 'problem'),
 ((SELECT id FROM education_resource WHERE title='社交恐惧的克服方法'), '焦虑', 0.80, 'problem'),
+((SELECT id FROM education_resource WHERE title='睡眠改善实用方法'), '睡眠', 0.90, 'problem'),
+((SELECT id FROM education_resource WHERE title='睡眠改善实用方法'), '生活习惯', 0.76, 'solution'),
+((SELECT id FROM education_resource WHERE title='压力下的自我关怀'), '自我关怀', 0.88, 'solution'),
+((SELECT id FROM education_resource WHERE title='压力下的自我关怀'), '压力应对', 0.82, 'solution'),
+((SELECT id FROM education_resource WHERE title='压力下的自我关怀'), '心理健康', 0.72, 'solution'),
 ((SELECT id FROM education_resource WHERE title='积极心理学实践'), '积极心理学', 0.90, 'solution'),
 ((SELECT id FROM education_resource WHERE title='积极心理学实践'), '幸福感', 0.82, 'solution');
 

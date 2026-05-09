@@ -758,23 +758,37 @@ public class AssessmentServiceImpl implements AssessmentService {
             
             // 基础标签
             if ("SDS".equals(scaleCode)) {
-                tagsMap.put("抑郁调适", 85.0);
+                tagsMap.put("抑郁", 85.0);
+                tagsMap.put("情绪识别", 82.0);
                 tagsMap.put("情绪管理", 80.0);
                 if (!level.contains("正常")) {
                     tagsMap.put("认知疗法", 75.0);
-                    tagsMap.put("自我关怀", 78.0);
+                    tagsMap.put("积极心理学", 78.0);
                 }
             } else if ("SCL90".equals(scaleCode)) {
                 tagsMap.put("心理健康", 85.0);
                 tagsMap.put("压力管理", 80.0);
+                tagsMap.put("放松技巧", 76.0);
                 if (dominantIssues != null && !dominantIssues.isEmpty()) {
-                    tagsMap.put(dominantIssues + "应对", 75.0);
+                    if (dominantIssues.contains("人际")) {
+                        tagsMap.put("人际交往", 78.0);
+                        tagsMap.put("沟通技巧", 75.0);
+                    } else if (dominantIssues.contains("焦虑")) {
+                        tagsMap.put("焦虑", 78.0);
+                        tagsMap.put("考试焦虑", 72.0);
+                    } else if (dominantIssues.contains("抑郁")) {
+                        tagsMap.put("抑郁", 78.0);
+                        tagsMap.put("情绪识别", 75.0);
+                    } else {
+                        tagsMap.put("情绪管理", 75.0);
+                    }
                 }
             } else if ("UPI".equals(scaleCode)) {
-                tagsMap.put("大学生心理", 85.0);
-                tagsMap.put("适应问题", 78.0);
+                tagsMap.put("积极心理学", 85.0);
+                tagsMap.put("人际交往", 78.0);
+                tagsMap.put("时间管理", 76.0);
                 if (!level.contains("一类")) {
-                    tagsMap.put("心理调适", 75.0);
+                    tagsMap.put("压力管理", 75.0);
                 }
             }
             
@@ -786,7 +800,7 @@ public class AssessmentServiceImpl implements AssessmentService {
                 tagsMap.put("心理咨询", 82.0);
                 tagsMap.put("团体辅导", 78.0);
             } else if (level.contains("轻度")) {
-                tagsMap.put("自我调节", 75.0);
+                tagsMap.put("情绪管理", 75.0);
                 tagsMap.put("放松技巧", 72.0);
             } else {
                 tagsMap.put("积极心理学", 70.0);
