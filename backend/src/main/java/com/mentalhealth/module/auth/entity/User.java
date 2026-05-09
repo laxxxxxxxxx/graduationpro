@@ -46,10 +46,6 @@ public class User implements Serializable {
     
     private Integer status;
     
-    private String openid;
-    
-    private String sessionKey;
-    
     private Date createdAt;
     
     private Date updatedAt;

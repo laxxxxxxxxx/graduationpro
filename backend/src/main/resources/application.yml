@@ -60,12 +60,6 @@ jwt:
   header: Authorization
   prefix: Bearer 
 
-# 微信小程序配置
-wechat:
-  miniapp:
-    appid: your_wechat_appid  # 替换为实际的微信小程序AppID
-    secret: your_wechat_secret  # 替换为实际的微信小程序AppSecret
-
 # 日志配置
 logging:
   level:

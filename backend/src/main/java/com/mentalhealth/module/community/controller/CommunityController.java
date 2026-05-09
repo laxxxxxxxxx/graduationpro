@@ -1,6 +1,7 @@
 package com.mentalhealth.module.community.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mentalhealth.common.exception.BusinessException;
 import com.mentalhealth.common.result.Result;
 import com.mentalhealth.common.utils.JwtUtil;
 import com.mentalhealth.module.community.entity.CommunityCategory;
@@ -56,7 +57,13 @@ public class CommunityController {
             userId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
         }
         
-        Page<CommunityPost> page = communityService.getPostList(pageNum, pageSize, categoryId, userId, (likes != null && likes));
+        boolean onlyMine = Boolean.TRUE.equals(mine);
+        boolean onlyLikes = Boolean.TRUE.equals(likes);
+        if ((onlyMine || onlyLikes) && userId == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+
+        Page<CommunityPost> page = communityService.getPostList(pageNum, pageSize, categoryId, userId, onlyMine, onlyLikes);
         return Result.success(page);
     }
     

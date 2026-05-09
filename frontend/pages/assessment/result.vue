@@ -266,7 +266,12 @@ export default {
   },
   
   onLoad(options) {
-    if (options.data) {
+    if (options.id) {
+      // 从提交页或档案页跳转，只带测评记录 ID，统一重新拉取报告
+      this.assessmentId = options.id
+      this.fromHistory = true
+      this.loadReport()
+    } else if (options.data) {
       // 从提交页面直接跳转（新测评结果）
       try {
         this.report = JSON.parse(decodeURIComponent(options.data))
@@ -275,11 +280,6 @@ export default {
         console.error('解析结果失败', e)
         uni.showToast({ title: '数据错误', icon: 'none' })
       }
-    } else if (options.id) {
-      // 从档案页跳转（查看历史报告）
-      this.assessmentId = options.id
-      this.fromHistory = true
-      this.loadReport()
     }
   },
   

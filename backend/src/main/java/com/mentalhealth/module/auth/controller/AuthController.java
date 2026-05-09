@@ -42,13 +42,6 @@ public class AuthController {
         return Result.success("注册成功", null);
     }
     
-    @PostMapping("/wx-login")
-    @ApiOperation("微信登录")
-    public Result<LoginVO> wxLogin(@RequestParam String code) {
-        LoginVO loginVO = authService.wxLogin(code);
-        return Result.success(loginVO);
-    }
-    
     @PostMapping("/logout")
     @ApiOperation("退出登录")
     public Result<Void> logout(@RequestHeader("Authorization") String token) {

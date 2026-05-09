@@ -114,7 +114,7 @@
 </template>
 
 <script>
-import { getResourceList, getCategories } from '@/api/resource'
+import { getResourceList, getCategories, searchResource } from '@/api/resource'
 
 export default {
   data() {
@@ -132,9 +132,21 @@ export default {
     }
   },
   
-  onLoad() {
+  onLoad(options = {}) {
+    if (options.keyword) {
+      this.keyword = decodeURIComponent(options.keyword)
+    }
     this.loadCategories()
     this.loadResources()
+  },
+
+  onShow() {
+    const pendingKeyword = uni.getStorageSync('resourceSearchKeyword')
+    if (pendingKeyword) {
+      uni.removeStorageSync('resourceSearchKeyword')
+      this.keyword = pendingKeyword
+      this.resetAndLoad()
+    }
   },
   
   methods: {
@@ -155,6 +167,21 @@ export default {
       try {
         this.loading = true
         
+        const keyword = this.keyword.trim()
+
+        if (keyword) {
+          const list = await searchResource(keyword)
+          const filtered = (list || []).filter((item) => {
+            const matchesType = this.currentType === null || item.type === this.currentType
+            const matchesCategory = this.currentCategory === null || String(item.categoryId) === String(this.currentCategory)
+            return matchesType && matchesCategory
+          })
+          this.resources = this.enrichResources(filtered)
+          this.total = this.resources.length
+          this.hasMore = false
+          return
+        }
+
         const params = {
           pageNum: this.pageNum,
           pageSize: this.pageSize
@@ -169,10 +196,7 @@ export default {
         }
         
         const res = await getResourceList(params)
-        const enriched = (res.records || []).map(r => ({
-          ...r,
-          typeClass: 'type-badge type-' + r.type
-        }))
+        const enriched = this.enrichResources(res.records || [])
         
         if (this.pageNum === 1) {
           this.resources = enriched
@@ -196,36 +220,40 @@ export default {
     // 选择分类
     selectCategory(categoryId) {
       this.currentCategory = categoryId
-      this.pageNum = 1
-      this.loadResources()
+      this.resetAndLoad()
     },
     
     // 选择类型
     selectType(type) {
       this.currentType = type
-      this.pageNum = 1
-      this.loadResources()
+      this.resetAndLoad()
     },
     
     // 搜索
     handleSearch() {
-      if (!this.keyword.trim()) {
-        uni.showToast({
-          title: '请输入搜索关键词',
-          icon: 'none'
-        })
-        return
-      }
-      
-      uni.navigateTo({
-        url: `/pages/resource/list?keyword=${encodeURIComponent(this.keyword)}`
-      })
+      this.keyword = this.keyword.trim()
+      this.resetAndLoad()
+    },
+
+    resetAndLoad() {
+      this.pageNum = 1
+      this.hasMore = true
+      this.resources = []
+      this.loadResources()
     },
     
     // 加载更多
     loadMore() {
+      if (this.keyword.trim()) return
       this.pageNum++
       this.loadResources()
+    },
+
+    enrichResources(list) {
+      return list.map(r => ({
+        ...r,
+        typeClass: 'type-badge type-' + r.type
+      }))
     },
     
     // 跳转详情

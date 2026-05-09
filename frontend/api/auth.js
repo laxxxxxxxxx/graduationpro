@@ -18,13 +18,6 @@ export const register = (data) => {
 }
 
 /**
- * 微信登录
- */
-export const wxLogin = (code) => {
-  return post('/auth/wx-login', { code })
-}
-
-/**
  * 获取用户信息
  */
 export const getUserInfo = () => {

@@ -215,6 +215,7 @@
 
 <script>
 import { getResourceDetail, recordStudy, toggleLike, toggleFavorite, getComments, addComment, deleteComment } from '@/api/resource'
+import { getApiBaseUrl } from '@/utils/request'
 
 export default {
   data() {
@@ -280,7 +281,7 @@ export default {
     
     // 记录学习进度
     async recordStudyProgress() {
-      if (!this.resource) return
+      if (!this.resource || !uni.getStorageSync('token')) return
       const duration = Math.floor((Date.now() - this.startTime) / 1000)
       try {
         await recordStudy(this.resource.id, {
@@ -298,6 +299,7 @@ export default {
     
     // 标记完成
     async markCompleted() {
+      if (!this.checkLogin()) return
       try {
         await recordStudy(this.resource.id, {
           progress: 100,
@@ -431,13 +433,10 @@ export default {
       if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
         return url
       }
-      // 如果是相对路径，补充基础URL
-      // 这里可以根据实际环境动态获取，或者从配置文件读取
-      const BASE_URL = 'http://localhost:8080/api'
       if (url.startsWith('/')) {
-        return BASE_URL + url
+        return getApiBaseUrl() + url
       }
-      return BASE_URL + '/' + url
+      return getApiBaseUrl() + '/' + url
     },
 
     // 视频开始播放

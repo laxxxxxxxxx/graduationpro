@@ -19,7 +19,7 @@
 </template>
 
 <script>
-import { get } from '@/utils/request'
+import { getLearningRecords } from '@/api/resource'
 
 export default {
   data() {
@@ -36,7 +36,7 @@ export default {
   methods: {
     async loadLearningRecords() {
       try {
-        const data = await get('/user/learning')
+        const data = await getLearningRecords()
         this.records = data || []
       } catch (error) {
         console.error('加载学习记录失败:', error)

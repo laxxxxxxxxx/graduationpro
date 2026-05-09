@@ -2,11 +2,37 @@
  * HTTP请求封装
  */
 
-// API基础URL - 开发环境
-const BASE_URL = 'http://localhost:8080/api'
+// API基础URL - 开发环境。可通过 VUE_APP_API_BASE_URL 或本地 storage(apiBaseUrl) 覆盖。
+const DEFAULT_BASE_URL = (
+  typeof process !== 'undefined' &&
+  process.env &&
+  process.env.VUE_APP_API_BASE_URL
+) || 'http://localhost:8080/api'
 
 // 生产环境请改为实际域名
 // const BASE_URL = 'https://your-api-domain.com/api'
+
+export const getApiBaseUrl = () => {
+  return uni.getStorageSync('apiBaseUrl') || DEFAULT_BASE_URL
+}
+
+const serializeParams = (params = {}) => {
+  return Object.keys(params)
+    .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join('&')
+}
+
+const buildUrl = (url, params) => {
+  const query = serializeParams(params)
+  const baseUrl = getApiBaseUrl()
+  if (!query) {
+    return baseUrl + url
+  }
+
+  const separator = url.includes('?') ? '&' : '?'
+  return baseUrl + url + separator + query
+}
 
 /**
  * 请求方法
@@ -25,7 +51,7 @@ const request = (options) => {
     }
     
     uni.request({
-      url: BASE_URL + options.url,
+      url: buildUrl(options.url, options.params),
       method: options.method || 'GET',
       data: options.data || {},
       header: {
@@ -95,11 +121,11 @@ const request = (options) => {
 /**
  * GET请求
  */
-export const get = (url, data = {}, options = {}) => {
+export const get = (url, params = {}, options = {}) => {
   return request({
     url,
     method: 'GET',
-    data,
+    params,
     ...options
   })
 }
@@ -148,7 +174,7 @@ export const upload = (filePath, options = {}) => {
     const token = uni.getStorageSync('token')
     
     uni.uploadFile({
-      url: BASE_URL + options.url,
+      url: buildUrl(options.url, options.params),
       filePath,
       name: options.name || 'file',
       formData: options.formData || {},

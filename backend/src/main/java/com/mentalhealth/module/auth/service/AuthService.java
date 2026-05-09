@@ -20,11 +20,6 @@ public interface AuthService {
     void register(RegisterRequest request);
     
     /**
-     * 微信登录
-     */
-    LoginVO wxLogin(String code);
-    
-    /**
      * 退出登录
      */
     void logout(Long userId);

@@ -30,7 +30,7 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
      * 获取相似用户（基于共同评分资源，带时间衰减的余弦相似度）
      * 时间衰减融入评分计算，使近期行为权重更高
      */
-    @Select("SELECT r2.user_id, COUNT(*) as common_resources, " +
+    @Select("SELECT r2_eff.user_id, COUNT(*) as common_resources, " +
             "SUM(r1_eff.score * r2_eff.score) / " +
             "(SQRT(SUM(r1_eff.score * r1_eff.score)) * SQRT(SUM(r2_eff.score * r2_eff.score))) as similarity " +
             "FROM (SELECT user_id, resource_id, " +

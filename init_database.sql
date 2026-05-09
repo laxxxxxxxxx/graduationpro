@@ -29,13 +29,10 @@ CREATE TABLE IF NOT EXISTS `user` (
     `role` TINYINT DEFAULT 1 COMMENT '角色: 1-学生 2-咨询师 3-管理员',
     `avatar` VARCHAR(255) COMMENT '头像URL',
     `status` TINYINT DEFAULT 1 COMMENT '状态: 0-禁用 1-正常',
-    `openid` VARCHAR(100) COMMENT '微信OpenID',
-    `session_key` VARCHAR(255) COMMENT '微信SessionKey(加密)',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX `idx_username` (`username`),
-    INDEX `idx_email` (`email`),
-    INDEX `idx_openid` (`openid`)
+    INDEX `idx_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 用户隐私设置表
@@ -83,6 +80,10 @@ CREATE TABLE IF NOT EXISTS `education_resource` (
     `copyright_status` TINYINT DEFAULT 1 COMMENT '版权状态: 1-已授权',
     `view_count` INT DEFAULT 0 COMMENT '浏览量',
     `like_count` INT DEFAULT 0 COMMENT '点赞数',
+    `favorite_count` INT DEFAULT 0 COMMENT '收藏数',
+    `comment_count` INT DEFAULT 0 COMMENT '评论数',
+    `description` TEXT COMMENT '资源简介/描述',
+    `media_url` VARCHAR(500) COMMENT '媒体资源URL(视频/音频链接)',
     `status` TINYINT DEFAULT 0 COMMENT '状态: 0-待审核 1-已发布 2-下架',
     `publish_time` DATETIME COMMENT '发布时间',
     `created_by` BIGINT COMMENT '创建者ID',
@@ -109,6 +110,48 @@ CREATE TABLE IF NOT EXISTS `user_learning_record` (
     FOREIGN KEY (`resource_id`) REFERENCES `education_resource`(`id`) ON DELETE CASCADE,
     UNIQUE KEY `uk_user_resource` (`user_id`, `resource_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户学习记录表';
+
+-- 资源点赞表
+CREATE TABLE IF NOT EXISTS `resource_like` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `resource_id` BIGINT NOT NULL COMMENT '资源ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '点赞时间',
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`resource_id`) REFERENCES `education_resource`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_user_resource` (`user_id`, `resource_id`),
+    INDEX `idx_resource` (`resource_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源点赞表';
+
+-- 资源收藏表
+CREATE TABLE IF NOT EXISTS `resource_favorite` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `resource_id` BIGINT NOT NULL COMMENT '资源ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`resource_id`) REFERENCES `education_resource`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_user_resource` (`user_id`, `resource_id`),
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_resource` (`resource_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源收藏表';
+
+-- 资源评论表
+CREATE TABLE IF NOT EXISTS `resource_comment` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '评论ID',
+    `resource_id` BIGINT NOT NULL COMMENT '资源ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `parent_id` BIGINT DEFAULT 0 COMMENT '父评论ID(0为顶级评论)',
+    `content` TEXT NOT NULL COMMENT '评论内容',
+    `like_count` INT DEFAULT 0 COMMENT '评论点赞数',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 0-隐藏 1-正常 2-删除',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    FOREIGN KEY (`resource_id`) REFERENCES `education_resource`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    INDEX `idx_resource_created` (`resource_id`, `created_at` DESC),
+    INDEX `idx_parent` (`parent_id`),
+    INDEX `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源评论表';
 
 -- ============================================
 -- 3. 自测评估相关表
@@ -155,10 +198,14 @@ CREATE TABLE IF NOT EXISTS `user_assessment` (
     `suggestions` TEXT COMMENT '干预建议',
     `answers` JSON NOT NULL COMMENT '答题详情JSON',
     `completion_time` INT COMMENT '完成用时(秒)',
+    `dimension_scores` JSON COMMENT '维度得分JSON',
+    `report_data` JSON COMMENT '完整报告数据JSON',
+    `report_generated_at` DATETIME COMMENT '报告生成时间',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`scale_id`) REFERENCES `assessment_scale`(`id`),
     INDEX `idx_user_created` (`user_id`, `created_at`),
+    INDEX `idx_user_scale_created` (`user_id`, `scale_id`, `created_at`),
     INDEX `idx_scale` (`scale_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户测评记录表';
 
@@ -206,6 +253,16 @@ CREATE TABLE IF NOT EXISTS `emotion_statistics` (
 -- 5. 匿名社区相关表
 -- ============================================
 
+-- 社区分类表
+CREATE TABLE IF NOT EXISTS `community_category` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT COMMENT '分类ID',
+    `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
+    `icon` VARCHAR(100) COMMENT '图标',
+    `sort_order` INT DEFAULT 0 COMMENT '排序',
+    `status` TINYINT DEFAULT 1 COMMENT '状态: 1-启用 0-禁用',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区分类表';
+
 -- 社区帖子表
 CREATE TABLE IF NOT EXISTS `community_post` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '帖子ID',
@@ -226,8 +283,10 @@ CREATE TABLE IF NOT EXISTS `community_post` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`category_id`) REFERENCES `community_category`(`id`) ON DELETE SET NULL,
     INDEX `idx_status_created` (`status`, `created_at` DESC),
-    INDEX `idx_user` (`user_id`)
+    INDEX `idx_user` (`user_id`),
+    INDEX `idx_category` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='社区帖子表';
 
 -- 社区评论表
@@ -310,7 +369,7 @@ CREATE TABLE IF NOT EXISTS `system_config` (
 
 -- 插入默认管理员账号 (密码: admin123, 需要后端BCrypt加密后替换)
 INSERT INTO `user` (`username`, `password`, `role`, `status`) 
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', 3, 1);
+VALUES ('admin', '$2a$10$1QWsFcfhksrzoWDeQ3gR.uFrvYaHD5iiFO6JLbFxvQ.NmDJPqsK1e', 3, 1);
 
 -- 插入资源分类
 INSERT INTO `resource_category` (`name`, `parent_id`, `sort_order`) VALUES
@@ -329,6 +388,16 @@ INSERT INTO `resource_category` (`name`, `parent_id`, `sort_order`) VALUES
 ('时间管理', 2, 2),
 ('沟通技巧', 3, 1),
 ('恋爱心理', 3, 2);
+
+-- 插入社区分类
+INSERT INTO `community_category` (`id`, `name`, `icon`, `sort_order`) VALUES
+(1, '情感倾诉', '💭', 1),
+(2, '学业压力', '📚', 2),
+(3, '人际关系', '🤝', 3),
+(4, '职业规划', '🎯', 4),
+(5, '家庭困扰', '🏠', 5),
+(6, '自我成长', '🌱', 6)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
 -- 插入测评量表
 INSERT INTO `assessment_scale` (`name`, `code`, `description`, `total_questions`, `estimated_time`, `scoring_rule`, `interpretation_template`, `status`) VALUES

@@ -12,7 +12,13 @@ public interface CommunityService {
     
     void createPost(Long userId, CommunityPost post);
     
-    Page<CommunityPost> getPostList(Integer pageNum, Integer pageSize, Integer categoryId, Long userId, Boolean onlyLikes);
+    Page<CommunityPost> getPostList(
+            Integer pageNum,
+            Integer pageSize,
+            Integer categoryId,
+            Long userId,
+            Boolean onlyMine,
+            Boolean onlyLikes);
     
     Map<String, Object> getPostDetail(Long postId, Long userId);
     

@@ -15,8 +15,10 @@ import com.mentalhealth.module.community.entity.CommunityPost;
 import com.mentalhealth.module.community.mapper.CommunityPostMapper;
 import com.mentalhealth.module.emotion.entity.EmotionDiary;
 import com.mentalhealth.module.emotion.mapper.EmotionDiaryMapper;
+import com.mentalhealth.module.resource.entity.EducationResource;
 import com.mentalhealth.module.resource.entity.UserLearningRecord;
 import com.mentalhealth.module.resource.mapper.LearningRecordMapper;
+import com.mentalhealth.module.resource.mapper.ResourceMapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +54,9 @@ public class UserController {
 
     @Autowired
     private LearningRecordMapper learningRecordMapper;
+
+    @Autowired
+    private ResourceMapper resourceMapper;
 
     @GetMapping("/profile")
     @ApiOperation("获取用户信息")
@@ -160,6 +165,52 @@ public class UserController {
         vo.setCommunityPostCount(Math.toIntExact(communityPostMapper.selectCount(postWrapper)));
 
         return Result.success(vo);
+    }
+
+    @GetMapping("/learning-records")
+    @ApiOperation("获取学习记录")
+    public Result<List<Map<String, Object>>> getLearningRecords(@RequestHeader("Authorization") String token) {
+        String actualToken = token.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserIdFromToken(actualToken);
+
+        LambdaQueryWrapper<UserLearningRecord> recordWrapper = new LambdaQueryWrapper<>();
+        recordWrapper.eq(UserLearningRecord::getUserId, userId)
+                .orderByDesc(UserLearningRecord::getLastStudyTime);
+        List<UserLearningRecord> records = learningRecordMapper.selectList(recordWrapper);
+
+        if (records.isEmpty()) {
+            return Result.success(Collections.emptyList());
+        }
+
+        List<Long> resourceIds = records.stream()
+                .map(UserLearningRecord::getResourceId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, EducationResource> resourceMap = resourceIds.isEmpty()
+                ? Collections.emptyMap()
+                : resourceMapper.selectBatchIds(resourceIds).stream()
+                        .collect(Collectors.toMap(EducationResource::getId, resource -> resource));
+
+        List<Map<String, Object>> result = records.stream()
+                .map(record -> {
+                    EducationResource resource = resourceMap.get(record.getResourceId());
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", record.getId());
+                    item.put("resourceId", record.getResourceId());
+                    item.put("resourceName", resource != null ? resource.getTitle() : "未知资源");
+                    item.put("coverUrl", resource != null ? resource.getCoverUrl() : null);
+                    item.put("type", resource != null ? resource.getType() : null);
+                    item.put("progress", record.getProgress());
+                    item.put("completed", Objects.equals(record.getCompleted(), 1));
+                    item.put("studyDuration", record.getStudyDuration());
+                    item.put("lastStudyTime", record.getLastStudyTime());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        return Result.success(result);
     }
 
     /**

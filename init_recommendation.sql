@@ -108,14 +108,14 @@ DELETE FROM user WHERE username LIKE 'student%';
 -- 插入更多测试用户（不同专业年级）
 -- 注意：需要记录插入后的实际ID，后续使用变量或子查询引用
 INSERT INTO `user` (`username`, `password`, `email`, `real_name`, `gender`, `age`, `university`, `major`, `grade`, `role`, `status`) VALUES
-('student001', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's001@test.com', '张三', 1, 20, '合肥工业大学', '计算机科学与技术', '大三', 1, 1),
-('student002', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's002@test.com', '李四', 0, 19, '合肥工业大学', '心理学', '大二', 1, 1),
-('student003', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's003@test.com', '王五', 1, 21, '合肥工业大学', '机械工程', '大四', 1, 1),
-('student004', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's004@test.com', '赵六', 0, 18, '合肥工业大学', '工商管理', '大一', 1, 1),
-('student005', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's005@test.com', '孙七', 1, 22, '合肥工业大学', '电子信息', '大四', 1, 1),
-('student006', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's006@test.com', '周八', 0, 20, '合肥工业大学', '英语', '大三', 1, 1),
-('student007', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's007@test.com', '吴九', 1, 19, '合肥工业大学', '数学', '大二', 1, 1),
-('student008', '$2a$10$sm3dp1Yq8uNE5S/v17FtkuU08NlPihHC9nbl/OwCgMys8qiQl9zQC', 's008@test.com', '郑十', 0, 21, '合肥工业大学', '艺术设计', '大三', 1, 1);
+('student001', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's001@test.com', '张三', 1, 20, '合肥工业大学', '计算机科学与技术', '大三', 1, 1),
+('student002', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's002@test.com', '李四', 0, 19, '合肥工业大学', '心理学', '大二', 1, 1),
+('student003', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's003@test.com', '王五', 1, 21, '合肥工业大学', '机械工程', '大四', 1, 1),
+('student004', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's004@test.com', '赵六', 0, 18, '合肥工业大学', '工商管理', '大一', 1, 1),
+('student005', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's005@test.com', '孙七', 1, 22, '合肥工业大学', '电子信息', '大四', 1, 1),
+('student006', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's006@test.com', '周八', 0, 20, '合肥工业大学', '英语', '大三', 1, 1),
+('student007', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's007@test.com', '吴九', 1, 19, '合肥工业大学', '数学', '大二', 1, 1),
+('student008', '$2a$10$kLjeA73KcQLFQBgfft8lP.0e01jo1zwtq4r4F.cO9wHugjahmhVce', 's008@test.com', '郑十', 0, 21, '合肥工业大学', '艺术设计', '大三', 1, 1);
 
 -- 重置user表的AUTO_INCREMENT，确保ID从1开始（如果表是空的）
 -- 注意：如果表中已有数据（如admin），这不会影响已有数据

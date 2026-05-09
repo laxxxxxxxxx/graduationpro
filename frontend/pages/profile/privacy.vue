@@ -28,13 +28,26 @@
 </template>
 
 <script>
+const STORAGE_KEY = 'privacySettings'
+const DEFAULT_SETTINGS = {
+  anonymous: true,
+  showLearning: false,
+  allowMessage: true
+}
+
 export default {
   data() {
     return {
-      settings: {
-        anonymous: true,
-        showLearning: false,
-        allowMessage: true
+      settings: { ...DEFAULT_SETTINGS }
+    }
+  },
+
+  onLoad() {
+    const savedSettings = uni.getStorageSync(STORAGE_KEY)
+    if (savedSettings) {
+      this.settings = {
+        ...DEFAULT_SETTINGS,
+        ...savedSettings
       }
     }
   },
@@ -42,14 +55,25 @@ export default {
   methods: {
     onAnonymousChange(e) {
       this.settings.anonymous = e.detail.value
+      this.saveSettings()
     },
     
     onShowLearningChange(e) {
       this.settings.showLearning = e.detail.value
+      this.saveSettings()
     },
     
     onAllowMessageChange(e) {
       this.settings.allowMessage = e.detail.value
+      this.saveSettings()
+    },
+
+    saveSettings() {
+      uni.setStorageSync(STORAGE_KEY, this.settings)
+      uni.showToast({
+        title: '已保存',
+        icon: 'success'
+      })
     }
   }
 }

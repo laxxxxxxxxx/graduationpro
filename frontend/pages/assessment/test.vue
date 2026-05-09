@@ -202,9 +202,9 @@ export default {
         
         uni.hideLoading()
         
-        // 跳转到结果页
+        // 跳转到结果页，只传记录 ID，避免完整报告塞进 URL 后超长
         uni.redirectTo({
-          url: `/pages/assessment/result?data=${encodeURIComponent(JSON.stringify(res))}`
+          url: `/pages/assessment/result?id=${res.assessmentId}`
         })
       } catch (err) {
         uni.hideLoading()

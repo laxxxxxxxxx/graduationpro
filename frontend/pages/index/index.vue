@@ -110,7 +110,7 @@ export default {
   
   onShow() {
     // 检查登录状态
-    this.checkLogin()
+    if (!this.checkLogin()) return
     this.loadUserInfo()
     this.loadRecommendations()
   },
@@ -164,6 +164,20 @@ export default {
     },
     
     navigateTo(url) {
+      const tabBarPages = [
+        '/pages/index/index',
+        '/pages/resource/list',
+        '/pages/assessment/scale-list',
+        '/pages/community/post-list',
+        '/pages/profile/index'
+      ]
+      const path = url.split('?')[0]
+
+      if (tabBarPages.includes(path)) {
+        uni.switchTab({ url: path })
+        return
+      }
+
       uni.navigateTo({ url })
     },
     

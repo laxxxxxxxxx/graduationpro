@@ -61,12 +61,18 @@ public class CommunityServiceImpl implements CommunityService {
     }
     
     @Override
-    public Page<CommunityPost> getPostList(Integer pageNum, Integer pageSize, Integer categoryId, Long userId, Boolean onlyLikes) {
+    public Page<CommunityPost> getPostList(
+            Integer pageNum,
+            Integer pageSize,
+            Integer categoryId,
+            Long userId,
+            Boolean onlyMine,
+            Boolean onlyLikes) {
         Page<CommunityPost> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<CommunityPost> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CommunityPost::getStatus, 1); // 只查询已审核通过的
         
-        if (onlyLikes != null && onlyLikes && userId != null) {
+        if (Boolean.TRUE.equals(onlyLikes) && userId != null) {
             // 查询点赞过的帖子
             List<PostLike> likes = postLikeMapper.selectList(new LambdaQueryWrapper<PostLike>()
                     .eq(PostLike::getUserId, userId));
@@ -75,21 +81,10 @@ public class CommunityServiceImpl implements CommunityService {
                 return page; // 返回空页
             }
             wrapper.in(CommunityPost::getId, postIds);
-        } else if (userId != null && categoryId == null) {
-            // 如果是查询"我的发布" (通常 mine 参数传进来时 categoryId 为空)
-            // 注意：这里逻辑可以根据具体前端传参调整，目前假设传了 userId 且不是 onlyLikes 就是查自己的
-            // 为了安全，我这里增加一个逻辑：如果 mine 参数映射到 userId
-            // 实际上在 Controller 层我已经把 mine 转换逻辑做了一半，这里补全
         }
-        
-        // 如果是查询特定用户的发布
-        // (修正：增加一个逻辑分支明确处理 userId 过滤)
-        // 实际上我们可以根据 Controller 传过来的逻辑，如果 userId 有值且不是 onlyLikes，
-        // 且前端明确想要查"我的"，我们需要一个标识。
-        // 这里简化处理：如果 categoryId 为 -1 表示查我的（或者增加参数）
-        // 考虑到接口一致性，我直接增加 userId 过滤条件
-        if (userId != null && !onlyLikes && categoryId == null) {
-             wrapper.eq(CommunityPost::getUserId, userId);
+
+        if (Boolean.TRUE.equals(onlyMine) && userId != null) {
+            wrapper.eq(CommunityPost::getUserId, userId);
         }
 
         if (categoryId != null && categoryId > 0) {

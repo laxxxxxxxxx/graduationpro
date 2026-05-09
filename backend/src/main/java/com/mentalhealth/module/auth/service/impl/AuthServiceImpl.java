@@ -97,12 +97,6 @@ public class AuthServiceImpl implements AuthService {
     }
     
     @Override
-    public LoginVO wxLogin(String code) {
-        // 简化版不支持微信登录
-        throw new BusinessException("当前版本不支持微信登录，请使用学号密码登录");
-    }
-    
-    @Override
     public void logout(Long userId) {
         // JWT无状态,前端删除token即可
         // 如果需要服务端维护黑名单,可以在这里将token加入Redis黑名单

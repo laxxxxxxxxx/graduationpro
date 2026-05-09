@@ -41,8 +41,8 @@ export default {
     }
   },
   
-  onLoad(options) {
-    this.loadCategories()
+  async onLoad(options) {
+    await this.loadCategories()
     if (options.mode === 'edit' && options.id) {
       this.isEditMode = true
       this.editPostId = options.id
@@ -56,6 +56,7 @@ export default {
       try {
         const data = await getCategories()
         this.categories = data || []
+        this.syncSelectedCategory()
       } catch (error) {
         console.error('加载分类失败:', error)
         // 降级使用默认分类
@@ -65,6 +66,7 @@ export default {
           { id: 3, name: '人际关系' },
           { id: 4, name: '职业规划' }
         ]
+        this.syncSelectedCategory()
       }
     },
     
@@ -78,16 +80,17 @@ export default {
           this.form.categoryId = post.categoryId || null
           
           // 设置选中的分类名称
-          if (post.categoryId) {
-            const cat = this.categories.find(c => c.id === post.categoryId)
-            if (cat) {
-              this.selectedCategory = cat.name
-            }
-          }
+          this.syncSelectedCategory()
         }
       } catch (error) {
         console.error('加载帖子数据失败:', error)
       }
+    },
+
+    syncSelectedCategory() {
+      if (!this.form.categoryId || this.categories.length === 0) return
+      const cat = this.categories.find(c => String(c.id) === String(this.form.categoryId))
+      this.selectedCategory = cat ? cat.name : ''
     },
     
     onCategoryChange(e) {
