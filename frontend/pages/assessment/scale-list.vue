@@ -19,8 +19,8 @@
           <text class="scale-name">{{ scale.name }}</text>
           <text class="scale-desc">{{ scale.description }}</text>
           <view class="scale-meta">
-            <text class="question-count">{{ scale.questionCount }}题</text>
-            <text class="duration">约{{ scale.duration }}分钟</text>
+            <text class="question-count">{{ scale.totalQuestions }}题</text>
+            <text class="duration">约{{ scale.estimatedTime }}分钟</text>
           </view>
         </view>
         <view class="arrow">›</view>
@@ -115,7 +115,12 @@ export default {
 
 .scale-list {
   .scale-item {
-    @extend %card;
+    background: #ffffff;
+    border-radius: 32rpx;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     padding: 40rpx;
     display: flex;
     justify-content: space-between;

@@ -24,13 +24,13 @@ public interface CommunityService {
     
     void updatePost(Long userId, Long postId, CommunityPost post);
     
-    void deletePost(Long userId, Long postId);
+    void deletePost(Long userId, Long postId, boolean isAdmin);
     
     void createComment(Long userId, Long postId, CommunityComment comment);
     
     List<CommunityComment> getComments(Long postId);
     
-    void deleteComment(Long userId, Long commentId);
+    void deleteComment(Long userId, Long commentId, boolean isAdmin);
     
     void likePost(Long userId, Long postId);
     

@@ -45,9 +45,9 @@
       <view class="recommend-list">
         <view 
           v-for="item in recommendList" 
-          :key="item.id" 
+          :key="item.id || item.resourceId" 
           class="recommend-item card"
-          @click="goResourceDetail(item.id)"
+          @click="goResourceDetail(item.id || item.resourceId)"
         >
           <image :src="resolveCoverUrl(item.coverUrl)" mode="aspectFill" class="cover"></image>
           <view class="info">
@@ -98,8 +98,9 @@
 
 <script>
 import { getUserInfo } from '@/api/auth'
-import { getResourceList } from '@/api/resource'
-import { getApiBaseUrl } from '@/utils/request'
+import { getResourceList, getUserFavorites, getUserLikes } from '@/api/resource'
+import { getPersonalizedRecommendations, recordClick } from '@/api/recommendation'
+import { resolveUrl } from '@/utils/request'
 
 const DEFAULT_COVER = '/static/images/resource-default-cover.png'
 
@@ -107,7 +108,9 @@ export default {
   data() {
     return {
       userInfo: {},
-      recommendList: []
+      recommendList: [],
+      favoriteList: [],
+      likeList: []
     }
   },
   
@@ -116,17 +119,31 @@ export default {
     if (!this.checkLogin()) return
     this.loadUserInfo()
     this.loadRecommendations()
+    this.loadUserInteractions()
   },
   
   onPullDownRefresh() {
     this.loadUserInfo()
     this.loadRecommendations()
+    this.loadUserInteractions()
     setTimeout(() => {
       uni.stopPullDownRefresh()
     }, 1000)
   },
   
   methods: {
+    async loadUserInteractions() {
+      try {
+        const [favorites, likes] = await Promise.all([
+          getUserFavorites(),
+          getUserLikes()
+        ])
+        this.favoriteList = (favorites || []).slice(0, 5) // 仅显示前5个
+        this.likeList = (likes || []).slice(0, 5)
+      } catch (error) {
+        console.error('获取用户交互数据失败', error)
+      }
+    },
     checkLogin() {
       const token = uni.getStorageSync('token')
       if (!token) {
@@ -155,6 +172,24 @@ export default {
     
     async loadRecommendations() {
       try {
+        // 核心：优先调用个性化推荐接口 (取前3条)
+        const res = await getPersonalizedRecommendations(3)
+        
+        if (res && res.length > 0) {
+          this.recommendList = res
+          console.log('加载个性化推荐成功')
+        } else {
+          // 如果无推荐数据（新用户或无画像），回退到热门资源
+          this.loadHotResources()
+        }
+      } catch (error) {
+        console.error('获取个性化推荐失败', error)
+        this.loadHotResources()
+      }
+    },
+
+    async loadHotResources() {
+      try {
         const res = await getResourceList({ 
           pageNum: 1, 
           pageSize: 3,
@@ -162,7 +197,7 @@ export default {
         })
         this.recommendList = res.records || []
       } catch (error) {
-        console.error('获取推荐资源失败', error)
+        console.error('获取热门资源失败', error)
       }
     },
     
@@ -185,6 +220,9 @@ export default {
     },
     
     goResourceDetail(id) {
+      // 记录推荐点击（异步，不阻塞跳转）
+      recordClick(id).catch(() => {})
+      
       uni.navigateTo({
         url: `/pages/resource/detail?id=${id}`
       })
@@ -202,13 +240,7 @@ export default {
 
     resolveCoverUrl(url) {
       if (!url) return DEFAULT_COVER
-      if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
-        return url
-      }
-      if (url.startsWith('/')) {
-        return getApiBaseUrl() + url
-      }
-      return getApiBaseUrl() + '/' + url
+      return resolveUrl(url)
     }
   }
 }
@@ -362,6 +394,39 @@ export default {
           font-size: $font-xs;
           color: $text-tertiary;
         }
+      }
+    }
+  }
+}
+
+.horizontal-scroll {
+  width: 100%;
+  white-space: nowrap;
+  
+  .horizontal-list {
+    display: flex;
+    padding: $spacing-xs;
+    
+    .horizontal-item {
+      display: inline-block;
+      width: 280rpx;
+      margin-right: $spacing-md;
+      padding: 0;
+      flex-shrink: 0;
+      overflow: hidden;
+      
+      .h-cover {
+        width: 100%;
+        height: 160rpx;
+        border-radius: $radius-md $radius-md 0 0;
+      }
+      
+      .h-title {
+        padding: $spacing-sm;
+        font-size: $font-sm;
+        color: $text-primary;
+        line-height: 1.4;
+        white-space: normal;
       }
     }
   }

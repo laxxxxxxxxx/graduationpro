@@ -79,7 +79,7 @@
         <view class="resource-info">
           <text class="title">{{ item.title }}</text>
           <view class="tags" v-if="item.tags">
-            <text class="tag" v-for="tag in item.tags.split(',').slice(0, 3)" :key="tag">
+            <text class="tag" v-for="(tag, tagIdx) in item.tags.split(',').slice(0, 3)" :key="tagIdx">
               {{ tag }}
             </text>
           </view>
@@ -110,12 +110,18 @@
       <text class="empty-text">暂无资源</text>
       <text class="empty-hint">请选择其他分类或筛选条件</text>
     </view>
+
+    <!-- 管理员悬浮按钮 -->
+    <view class="admin-fab" v-if="isAdmin" @click="handleUpload">
+      <text class="fab-icon">+</text>
+      <text class="fab-label">上传</text>
+    </view>
   </view>
 </template>
 
 <script>
 import { getResourceList, getCategories, searchResource } from '@/api/resource'
-import { getApiBaseUrl } from '@/utils/request'
+import { resolveUrl } from '@/utils/request'
 
 const DEFAULT_COVER = '/static/images/resource-default-cover.png'
 
@@ -132,6 +138,13 @@ export default {
       total: 0,
       loading: false,
       hasMore: true
+    }
+  },
+  
+  computed: {
+    isAdmin() {
+      const userInfo = uni.getStorageSync('userInfo')
+      return userInfo && (userInfo.role === 3 || userInfo.username === 'admin')
     }
   },
   
@@ -175,6 +188,7 @@ export default {
         if (keyword) {
           const list = await searchResource(keyword)
           const filtered = (list || []).filter((item) => {
+            if (!item) return false
             const matchesType = this.currentType === null || item.type === this.currentType
             const matchesCategory = this.currentCategory === null || String(item.categoryId) === String(this.currentCategory)
             return matchesType && matchesCategory
@@ -199,6 +213,13 @@ export default {
         }
         
         const res = await getResourceList(params)
+        if (!res) {
+          this.resources = []
+          this.total = 0
+          this.hasMore = false
+          return
+        }
+
         const enriched = this.enrichResources(res.records || [])
         
         if (this.pageNum === 1) {
@@ -212,11 +233,12 @@ export default {
       } catch (error) {
         console.error('加载资源失败:', error)
         uni.showToast({
-          title: '加载失败',
+          title: '加载失败，请检查网络',
           icon: 'none'
         })
       } finally {
         this.loading = false
+        uni.stopPullDownRefresh()
       }
     },
     
@@ -289,13 +311,13 @@ export default {
 
     resolveCoverUrl(url) {
       if (!url) return DEFAULT_COVER
-      if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
-        return url
-      }
-      if (url.startsWith('/')) {
-        return getApiBaseUrl() + url
-      }
-      return getApiBaseUrl() + '/' + url
+      return resolveUrl(url)
+    },
+    
+    handleUpload() {
+      uni.navigateTo({
+        url: '/pages/resource/upload'
+      })
     }
   }
 }
@@ -326,8 +348,15 @@ export default {
     width: 140rpx;
     height: 80rpx;
     line-height: 80rpx;
-    @extend %btn-primary;
-    border-radius: $radius-xl;
+    background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+    color: #fff;
+    border-radius: 50rpx;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
     font-size: $font-md;
     padding: 0;
   }
@@ -390,8 +419,12 @@ export default {
 
 .resource-list {
   .resource-item {
-    @extend %card;
+    background: #ffffff;
+    border-radius: 32rpx;
     padding: $spacing-md;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
     gap: $spacing-md;
@@ -541,6 +574,39 @@ export default {
   .empty-hint {
     font-size: $font-sm;
     color: $text-tertiary;
+  }
+}
+
+.admin-fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 160rpx;
+  width: 110rpx;
+  height: 110rpx;
+  background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 20rpx rgba(255, 140, 140, 0.4);
+  z-index: 99;
+  
+  .fab-icon {
+    color: #fff;
+    font-size: 40rpx;
+    font-weight: 700;
+    line-height: 1;
+  }
+  
+  .fab-label {
+    color: #fff;
+    font-size: 20rpx;
+    font-weight: 500;
+  }
+  
+  &:active {
+    transform: scale(0.9);
   }
 }
 </style>

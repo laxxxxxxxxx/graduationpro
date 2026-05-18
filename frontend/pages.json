@@ -32,6 +32,12 @@
       }
     },
     {
+      "path": "pages/resource/upload",
+      "style": {
+        "navigationBarTitleText": "上传资源"
+      }
+    },
+    {
       "path": "pages/resource/detail",
       "style": {
         "navigationBarTitleText": "资源详情"
@@ -173,8 +179,5 @@
     "navigationBarTitleText": "心理健康平台",
     "navigationBarBackgroundColor": "#FAF8F5",
     "backgroundColor": "#FAF8F5"
-  },
-  "easycom": {
-    "^u-(.*)": "uview-ui/components/u-$1/u-$1.vue"
   }
 }

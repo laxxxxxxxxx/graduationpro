@@ -60,6 +60,13 @@ export const toggleFavorite = (resourceId) => {
 }
 
 /**
+ * 删除资源 (管理员)
+ */
+export const deleteResource = (id) => {
+  return del(`/resource/${id}`)
+}
+
+/**
  * 获取资源评论列表
  */
 export const getComments = (resourceId) => {
@@ -81,8 +88,22 @@ export const deleteComment = (commentId) => {
 }
 
 /**
+ * 上传资源 (管理员)
+ */
+export const createResource = (data) => {
+  return post('/resource', data)
+}
+
+/**
  * 获取用户收藏列表
  */
 export const getUserFavorites = () => {
   return get('/resource/favorites')
+}
+
+/**
+ * 获取用户点赞列表
+ */
+export const getUserLikes = () => {
+  return get('/resource/likes')
 }

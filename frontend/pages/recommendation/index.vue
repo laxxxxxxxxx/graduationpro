@@ -50,7 +50,7 @@
       <view 
         class="recommend-item" 
         v-for="(item, index) in recommendations" 
-        :key="item.resourceId"
+        :key="index"
         @click="goDetail(item)"
       >
         <view class="item-header">
@@ -58,7 +58,7 @@
           <view class="info">
             <text class="title">{{ item.title }}</text>
             <view class="tags" v-if="item.tags">
-              <text class="tag" v-for="tag in item.tags.split(',').slice(0, 3)" :key="tag">
+              <text class="tag" v-for="(tag, tagIdx) in item.tags.split(',').slice(0, 3)" :key="tagIdx">
                 {{ tag }}
               </text>
             </view>
@@ -94,6 +94,7 @@
 
 <script>
 import { getPersonalizedRecommendations, getUserBasedCF, getContentBased, getProfileBased, recordClick, refreshInterestTags } from '@/api/recommendation'
+import { resolveUrl } from '@/utils/request'
 
 export default {
   data() {
@@ -190,6 +191,10 @@ export default {
         uni.hideLoading()
         uni.showToast({ title: '刷新失败', icon: 'none' })
       }
+    },
+
+    resolveCoverUrl(url) {
+      return resolveUrl(url)
     }
   }
 }
@@ -247,8 +252,12 @@ export default {
 
 .recommend-list {
   .recommend-item {
-    @extend %card;
+    background: #ffffff;
+    border-radius: 32rpx;
     padding: $spacing-lg;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     transition: transform 0.2s;
     
     &:active {
@@ -355,11 +364,24 @@ export default {
   }
   
   .refresh-btn-empty {
-    @extend %btn-primary;
+    background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+    color: #fff;
+    border-radius: 50rpx;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
     height: 80rpx;
     padding: 0 60rpx;
     display: inline-flex;
     font-size: $font-md;
+    
+    &:active {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
   }
 }
 

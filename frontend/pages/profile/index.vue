@@ -1,103 +1,103 @@
 <template>
   <view class="container">
     <!-- 用户信息卡片 -->
-    <view class="user-card">
-      <view class="avatar-wrap">
-        <text class="avatar">{{ displayName.charAt(0).toUpperCase() }}</text>
+    <view class="user-header">
+      <view class="user-info" @click="navigateTo('/pages/profile/edit')">
+        <view class="avatar-wrapper">
+          <image class="avatar" :src="userInfo.avatar || '/static/icons/profile-active.png'" mode="aspectFill"></image>
+        </view>
+        <view class="details">
+          <text class="username">{{ userInfo.realName || userInfo.username || '同学' }}</text>
+          <text class="school">{{ userInfo.university || '未设置学校' }} · {{ userInfo.major || '未设置专业' }}</text>
+        </view>
+        <text class="edit-btn">编辑资料</text>
       </view>
-      <text class="username">{{ displayName }}</text>
-      <view class="info-tags">
-        <text class="tag" v-if="profile.university">{{ profile.university }}</text>
-        <text class="tag" v-if="profile.major">{{ profile.major }}</text>
-        <text class="tag" v-if="profile.grade">{{ profile.grade }}</text>
-      </view>
-      <view class="info-detail" v-if="profile.gender || profile.age">
-        <text v-if="profile.gender !== null && profile.gender !== undefined">
-          {{ profile.gender === 1 ? '♂ 男' : profile.gender === 0 ? '♀ 女' : '其他' }}
-        </text>
-        <text v-if="profile.age"> · {{ profile.age }}岁</text>
-      </view>
-      <view class="edit-btn" @click="goEdit">编辑资料</view>
     </view>
 
     <!-- 统计面板 -->
     <view class="stats-card">
-      <view class="stat-item">
+      <view class="stat-item" @click="navigateTo('/pages/assessment/history')">
         <text class="stat-num">{{ profile.assessmentCount || 0 }}</text>
-        <text class="stat-label">测评次数</text>
+        <text class="stat-label">测评记录</text>
       </view>
-      <view class="stat-item">
+      <view class="stat-item" @click="navigateTo('/pages/emotion/diary-list')">
         <text class="stat-num">{{ profile.diaryCount || 0 }}</text>
         <text class="stat-label">情绪日记</text>
       </view>
-      <view class="stat-item">
-        <text class="stat-num">{{ profile.learningCount || 0 }}</text>
-        <text class="stat-label">学习记录</text>
-      </view>
-      <view class="stat-item">
+      <view class="stat-item" @click="navigateTo('/pages/community/post-list?mine=true')">
         <text class="stat-num">{{ profile.communityPostCount || 0 }}</text>
-        <text class="stat-label">社区帖子</text>
+        <text class="stat-label">发布帖数</text>
+      </view>
+      <view class="stat-item" @click="navigateTo('/pages/profile/learning')">
+        <text class="stat-num">{{ profile.learningCount || 0 }}</text>
+        <text class="stat-label">学习资源</text>
       </view>
     </view>
 
-    <!-- 最近测评结果 -->
+    <!-- 最近测评摘要 -->
     <view class="section-card" v-if="profile.lastAssessmentScale">
       <view class="section-header">
-        <text class="section-title">📊 最近测评</text>
+        <text class="section-title">最近测评</text>
         <text class="section-date">{{ profile.lastAssessmentDate }}</text>
       </view>
-      <view class="assessment-summary">
+      <view class="assessment-summary" @click="navigateTo('/pages/assessment/history')">
         <text class="scale-name">{{ profile.lastAssessmentScale }}</text>
-        <text class="result-badge" :class="latestResultClass">
-          {{ profile.lastAssessmentResult || '暂无结果' }}
-        </text>
+        <view class="result-badge" :class="computeLevelClass(profile.lastAssessmentResult)">
+          {{ profile.lastAssessmentResult }}
+        </view>
       </view>
     </view>
 
-    <!-- 测评历史 -->
+    <!-- 测评历史简表 -->
     <view class="section-card" v-if="profile.assessmentHistory && profile.assessmentHistory.length > 0">
       <view class="section-header">
-        <text class="section-title">📋 测评记录</text>
-        <text class="section-more" @click="goAssessmentHistory">全部 ›</text>
+        <text class="section-title">测评历史</text>
+        <text class="section-more" @click="navigateTo('/pages/assessment/history')">查看全部 ></text>
       </view>
-      <view 
-        class="history-item" 
-        v-for="item in enrichedAssessmentHistory" 
-        :key="item.id"
-        @click="viewReport(item.id)"
-      >
-        <view class="item-left">
-          <text class="item-scale">{{ item.scaleName }}</text>
-          <text class="item-date">{{ formatDate(item.createdAt) }}</text>
-        </view>
-        <view class="item-right">
-          <text class="item-level" :class="item.resultClass">{{ item.resultLevel || '—' }}</text>
-          <text class="item-arrow">›</text>
+      <view class="history-list">
+        <view 
+          class="history-item" 
+          v-for="item in profile.assessmentHistory" 
+          :key="item.id"
+          @click="viewReport(item.id)"
+        >
+          <view class="item-left">
+            <text class="item-scale">{{ item.scaleName }}</text>
+            <text class="item-date">{{ formatDate(item.createdAt) }}</text>
+          </view>
+          <view class="item-right">
+            <text class="item-level" :class="computeLevelClass(item.resultLevel)">{{ item.resultLevel }}</text>
+            <text class="item-arrow">›</text>
+          </view>
         </view>
       </view>
     </view>
 
     <!-- 功能菜单 -->
     <view class="menu-card">
-      <view class="menu-item" @click="goAssessmentHistory">
-        <text class="menu-icon">📝</text>
-        <text class="menu-label">测评档案</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @click="goLearning">
-        <text class="menu-icon">📚</text>
+      <view class="menu-item" @click="navigateTo('/pages/profile/learning?tab=records')">
+        <text class="menu-icon">📖</text>
         <text class="menu-label">学习记录</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item" @click="goPrivacy">
-        <text class="menu-icon">🔒</text>
+      <view class="menu-item" @click="navigateTo('/pages/profile/learning?tab=favorites')">
+        <text class="menu-icon">⭐</text>
+        <text class="menu-label">我的收藏</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @click="navigateTo('/pages/profile/learning?tab=likes')">
+        <text class="menu-icon">👍</text>
+        <text class="menu-label">我的点赞</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" @click="navigateTo('/pages/profile/privacy')">
+        <text class="menu-icon">🛡️</text>
         <text class="menu-label">隐私设置</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item logout-item" @click="logout">
+      <view class="menu-item logout-item" @click="handleLogout">
         <text class="menu-icon">🚪</text>
         <text class="menu-label">退出登录</text>
-        <text class="menu-arrow">›</text>
       </view>
     </view>
   </view>
@@ -109,103 +109,67 @@ import { getUserProfileFull } from '@/api/auth'
 export default {
   data() {
     return {
+      userInfo: {},
       profile: {}
     }
   },
-
-  computed: {
-    displayName() {
-      return this.profile.realName || this.profile.username || '用户'
-    },
-    // 最近测评结果的样式类
-    latestResultClass() {
-      return this.computeResultClass(this.profile.lastAssessmentResult)
-    },
-    // 为测评历史预计算 resultClass
-    enrichedAssessmentHistory() {
-      if (!this.profile.assessmentHistory) return []
-      return this.profile.assessmentHistory.map(item => ({
-        ...item,
-        resultClass: this.computeResultClass(item.resultLevel)
-      }))
-    }
-  },
-
+  
   onShow() {
     this.loadProfile()
   },
-
+  
   methods: {
     async loadProfile() {
       try {
         const data = await getUserProfileFull()
-        this.profile = data || {}
-        // 同步更新本地存储
-        const basicInfo = {
-          id: data.id,
+        this.profile = data
+        this.userInfo = {
           username: data.username,
           realName: data.realName,
-          avatar: data.avatar
+          avatar: data.avatar,
+          university: data.university,
+          major: data.major
         }
-        uni.setStorageSync('userInfo', basicInfo)
       } catch (error) {
-        console.error('加载个人主页失败:', error)
+        console.error('加载个人资料失败:', error)
       }
     },
-
-    computeResultClass(level) {
-      if (!level) return ''
+    
+    navigateTo(url) {
+      uni.navigateTo({ url })
+    },
+    
+    viewReport(id) {
+      uni.navigateTo({
+        url: `/pages/assessment/result?id=${id}`
+      })
+    },
+    
+    computeLevelClass(level) {
+      if (!level) return 'level-normal'
       if (level.includes('正常') || level.includes('一类')) return 'level-normal'
       if (level.includes('轻度') || level.includes('二类')) return 'level-mild'
       if (level.includes('中度')) return 'level-moderate'
       if (level.includes('重度') || level.includes('三类')) return 'level-severe'
-      return ''
+      return 'level-normal'
     },
-
+    
     formatDate(dateStr) {
       if (!dateStr) return ''
-      if (typeof dateStr === 'string') {
-        return dateStr.substring(0, 10)
-      }
-      return ''
+      return dateStr.substring(0, 10)
     },
-
-    goEdit() {
-      uni.navigateTo({ url: '/pages/profile/edit' })
-    },
-
-    goAssessmentHistory() {
-      uni.navigateTo({ url: '/pages/assessment/history' })
-    },
-
-    goLearning() {
-      uni.navigateTo({ url: '/pages/profile/learning' })
-    },
-
-    goMyPosts() {
-      uni.navigateTo({ url: '/pages/community/post-list?mine=true' })
-    },
-
-    goMyLikes() {
-      uni.navigateTo({ url: '/pages/community/post-list?likes=true' })
-    },
-
-    goPrivacy() {
-      uni.navigateTo({ url: '/pages/profile/privacy' })
-    },
-
-    viewReport(id) {
-      uni.navigateTo({ url: `/pages/assessment/result?id=${id}` })
-    },
-
-    logout() {
+    
+    handleLogout() {
       uni.showModal({
         title: '提示',
-        content: '确定要退出登录吗?',
+        content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
-            uni.clearStorageSync()
-            uni.reLaunch({ url: '/pages/login/login' })
+            uni.removeStorageSync('token')
+            uni.removeStorageSync('userInfo')
+            uni.reLaunch({
+              url: '/pages/login/login'
+            })
           }
         }
       })
@@ -220,82 +184,76 @@ export default {
   padding-bottom: $spacing-xl;
 }
 
-// 用户卡片
-.user-card {
+.user-header {
   background: $primary-gradient;
   border-radius: $radius-lg;
-  padding: 60rpx 40rpx 40rpx;
-  text-align: center;
+  padding: 60rpx 40rpx;
   margin-bottom: $spacing-lg;
-  position: relative;
-  box-shadow: $shadow-lg;
-
-  .avatar-wrap {
-    width: 140rpx;
-    height: 140rpx;
-    line-height: 140rpx;
-    background: rgba(255,255,255,0.3);
-    border-radius: $radius-round;
-    margin: 0 auto $spacing-md;
-    border: 4rpx solid rgba(255,255,255,0.5);
-
-    .avatar {
-      font-size: 60rpx;
-      color: #fff;
-      font-weight: 700;
-    }
-  }
-
-  .username {
-    display: block;
-    font-size: $font-xl;
-    color: #fff;
-    font-weight: 700;
-    margin-bottom: $spacing-sm;
-  }
-
-  .info-tags {
+  box-shadow: $shadow-md;
+  
+  .user-info {
     display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 12rpx;
-    margin-bottom: $spacing-sm;
-
-    .tag {
-      font-size: $font-xs;
-      color: rgba(255,255,255,0.95);
-      background: rgba(255,255,255,0.2);
-      padding: 6rpx 20rpx;
-      border-radius: $radius-xl;
-    }
-  }
-
-  .info-detail {
-    font-size: $font-sm;
-    color: rgba(255,255,255,0.85);
-    margin-bottom: $spacing-lg;
-  }
-
-  .edit-btn {
-    display: inline-block;
-    font-size: $font-sm;
-    color: #fff;
-    border: 2rpx solid rgba(255,255,255,0.6);
-    padding: 12rpx 40rpx;
-    border-radius: $radius-xl;
-    transition: all 0.2s;
+    align-items: center;
+    position: relative;
     
-    &:active {
-      background: rgba(255,255,255,0.1);
+    .avatar-wrapper {
+      width: 130rpx;
+      height: 130rpx;
+      border-radius: $radius-round;
+      border: 6rpx solid rgba(255, 255, 255, 0.4);
+      margin-right: 30rpx;
+      overflow: hidden;
+      background: #fff;
+      
+      .avatar {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    
+    .details {
+      flex: 1;
+      
+      .username {
+        display: block;
+        font-size: 40rpx;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8rpx;
+      }
+      
+      .school {
+        display: block;
+        font-size: $font-xs;
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+    
+    .edit-btn {
+      display: inline-block;
+      font-size: $font-sm;
+      color: #fff;
+      border: 2rpx solid rgba(255,255,255,0.6);
+      padding: 12rpx 40rpx;
+      border-radius: $radius-xl;
+      transition: all 0.2s;
+      
+      &:active {
+        background: rgba(255,255,255,0.1);
+      }
     }
   }
 }
 
 // 统计面板
 .stats-card {
-  @extend %card;
-  display: flex;
+  background: #ffffff;
+  border-radius: 32rpx;
   padding: 40rpx 20rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  display: flex;
   
   .stat-item {
     flex: 1;
@@ -329,7 +287,12 @@ export default {
 
 // 区块卡片
 .section-card {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 
   .section-header {
     display: flex;
@@ -463,8 +426,12 @@ export default {
 
 // 菜单
 .menu-card {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
   padding: 0;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   overflow: hidden;
 
   .menu-item {
@@ -500,7 +467,7 @@ export default {
     }
 
     .menu-arrow {
-      font-size: 40rpx;
+      font-size: 36rpx;
       color: $text-tertiary;
     }
   }

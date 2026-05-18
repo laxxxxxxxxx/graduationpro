@@ -258,12 +258,12 @@ public class CommunityServiceImpl implements CommunityService {
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deletePost(Long userId, Long postId) {
+    public void deletePost(Long userId, Long postId, boolean isAdmin) {
         CommunityPost existing = postMapper.selectById(postId);
         if (existing == null) {
             throw new BusinessException("帖子不存在");
         }
-        if (!existing.getUserId().equals(userId)) {
+        if (!isAdmin && !existing.getUserId().equals(userId)) {
             throw new BusinessException("只能删除自己的帖子");
         }
         
@@ -275,12 +275,12 @@ public class CommunityServiceImpl implements CommunityService {
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteComment(Long userId, Long commentId) {
+    public void deleteComment(Long userId, Long commentId, boolean isAdmin) {
         CommunityComment comment = commentMapper.selectById(commentId);
         if (comment == null) {
             throw new BusinessException("评论不存在");
         }
-        if (!comment.getUserId().equals(userId)) {
+        if (!isAdmin && !comment.getUserId().equals(userId)) {
             throw new BusinessException("只能删除自己的评论");
         }
         

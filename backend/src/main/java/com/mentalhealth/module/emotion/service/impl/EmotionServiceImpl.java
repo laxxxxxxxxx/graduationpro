@@ -6,9 +6,11 @@ import com.mentalhealth.common.exception.BusinessException;
 import com.mentalhealth.module.emotion.entity.EmotionDiary;
 import com.mentalhealth.module.emotion.mapper.EmotionDiaryMapper;
 import com.mentalhealth.module.emotion.service.EmotionService;
+import com.mentalhealth.module.recommendation.mapper.UserResourceRatingMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -20,13 +22,58 @@ public class EmotionServiceImpl implements EmotionService {
     
     @Autowired
     private EmotionDiaryMapper diaryMapper;
+
+    @Autowired
+    private UserResourceRatingMapper ratingMapper;
     
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void createDiary(Long userId, EmotionDiary diary) {
         diary.setUserId(userId);
-        diary.setCreatedAt(new Date());
-        diaryMapper.insert(diary);
-        log.info("用户{}创建情绪日记", userId);
+        
+        // 检查该用户当天是否已经写过日记 (因为数据库有 UNIQUE KEY `uk_user_date`)
+        LambdaQueryWrapper<EmotionDiary> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EmotionDiary::getUserId, userId)
+               .eq(EmotionDiary::getDiaryDate, diary.getDiaryDate());
+        
+        EmotionDiary existing = diaryMapper.selectOne(wrapper);
+        
+        if (existing != null) {
+            // 如果已存在，则更新
+            diary.setId(existing.getId());
+            diary.setUpdatedAt(new Date());
+            diaryMapper.updateById(diary);
+            log.info("用户{}更新了{}的情绪日记", userId, diary.getDiaryDate());
+        } else {
+            // 不存在则创建
+            diary.setCreatedAt(new Date());
+            diaryMapper.insert(diary);
+            log.info("用户{}创建了{}的情绪日记", userId, diary.getDiaryDate());
+        }
+
+        // 联动推荐系统：根据日记标签更新兴趣偏好
+        if (diary.getMoodTags() != null && !diary.getMoodTags().isEmpty()) {
+            String[] tags = diary.getMoodTags().split("[,，]");
+            for (String tag : tags) {
+                String cleanTag = tag.trim();
+                if (!cleanTag.isEmpty()) {
+                    // 行为来源标签，给予较高的初始兴趣分 (85分)，用于反映近期心境
+                    ratingMapper.insertOrUpdateInterestTag(userId, cleanTag, 
+                        "diary", "emotion", 85.0);
+                }
+            }
+        }
+
+        // 尝试从内容中提取关键词
+        if (diary.getContent() != null && !diary.getContent().isEmpty()) {
+            String content = diary.getContent();
+            String[] demoKeywords = {"考试", "焦虑", "压力", "沟通", "人际", "社交", "复习", "学业", "室友", "疲惫", "失眠"};
+            for (String kw : demoKeywords) {
+                if (content.contains(kw)) {
+                    ratingMapper.insertOrUpdateInterestTag(userId, kw, "diary", "general", 80.0);
+                }
+            }
+        }
     }
     
     @Override
@@ -106,7 +153,7 @@ public class EmotionServiceImpl implements EmotionService {
         Map<String, Long> emotionDist = new HashMap<>();
         diaries.forEach(d -> {
             if (d.getMoodTags() != null) {
-                String[] tags = d.getMoodTags().split(",");
+                String[] tags = d.getMoodTags().split("[,，]");
                 for (String tag : tags) {
                     emotionDist.merge(tag.trim(), 1L, Long::sum);
                 }

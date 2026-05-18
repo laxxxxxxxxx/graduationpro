@@ -259,8 +259,15 @@ public class AssessmentServiceImpl implements AssessmentService {
         
         for (int i = 0; i < answers.size(); i++) {
             JSONObject answer = answers.getJSONObject(i);
-            int itemNo = i + 1;
-            int score = answer.getInteger("answer");
+            if (answer == null) continue;
+            
+            Integer itemNoObj = answer.getInteger("questionNo");
+            int itemNo = itemNoObj != null ? itemNoObj : (i + 1);
+            
+            Integer scoreObj = answer.getInteger("answer");
+            if (scoreObj == null) continue;
+            
+            int score = scoreObj;
             // 反向计分
             if (reverseItems.contains(itemNo)) {
                 score = 5 - score;
@@ -310,9 +317,6 @@ public class AssessmentServiceImpl implements AssessmentService {
         return result;
     }
     
-    // ============================================
-    // SCL-90症状自评量表评分（90题，10因子）
-    // ============================================
     private Map<String, Object> scoreSCL90(JSONArray answers) {
         // SCL-90 10个因子维度映射
         Map<String, int[]> factorItems = new LinkedHashMap<>();
@@ -332,13 +336,18 @@ public class AssessmentServiceImpl implements AssessmentService {
         double totalScore = 0;
         for (int i = 0; i < answers.size(); i++) {
             JSONObject answer = answers.getJSONObject(i);
-            int itemNo = answer.getInteger("questionNo") != null ? answer.getInteger("questionNo") : (i + 1);
-            int score = answer.getInteger("answer");
+            if (answer == null) continue;
+            
+            Integer itemNoObj = answer.getInteger("questionNo");
+            int itemNo = itemNoObj != null ? itemNoObj : (i + 1);
+            
+            Integer scoreObj = answer.getInteger("answer");
+            if (scoreObj == null) continue;
+            
+            int score = scoreObj;
             answerMap.put(itemNo, score);
             totalScore += score;
         }
-        
-        int answeredCount = answers.size();
         
         // 计算各因子分
         Map<String, Double> dimensionScores = new LinkedHashMap<>();
@@ -356,7 +365,7 @@ public class AssessmentServiceImpl implements AssessmentService {
                     count++;
                 }
             }
-            double avg = count > 0 ? sum / count : 0;
+            double avg = count > 0 ? sum / count : 1.0; // 默认为1(无症状)
             dimensionScores.put(factorName, round(avg, 2));
             if (avg >= 3.0) {
                 highDimensions.add(factorName);
@@ -380,10 +389,11 @@ public class AssessmentServiceImpl implements AssessmentService {
         if (!highDimensions.isEmpty()) {
             riskFlags.add("⚡ 偏高维度: " + String.join("、", highDimensions) + "，建议重点关注");
         }
-        if (totalScore > 200) {
+        if (totalScore > 160) {
             riskFlags.add("⚠️ 总分偏高，建议尽快进行专业评估");
         }
-        if (answerMap.containsKey(15) && answerMap.get(15) >= 4) {
+        Integer q15Score = answerMap.get(15);
+        if (q15Score != null && q15Score >= 4) {
             riskFlags.add("🚨 第15题(想结束生命)得分偏高，需立即关注！危机热线: 400-161-9995");
         }
         
@@ -403,41 +413,47 @@ public class AssessmentServiceImpl implements AssessmentService {
     private Map<String, Object> scoreUPI(JSONArray answers) {
         // 关键题（需要立即关注的题目）
         Set<Integer> criticalItems = new HashSet<>(Arrays.asList(15, 20, 45, 54));
-        // 辅助关键题
-        Set<Integer> secondaryItems = new HashSet<>(Arrays.asList(9, 14, 18, 24, 25, 38, 39, 40));
         
         int totalScore = 0;
         int criticalCount = 0;
         List<String> criticalWarnings = new ArrayList<>();
+        
+        Map<Integer, Integer> answerMap = new HashMap<>();
+        for (int i = 0; i < answers.size(); i++) {
+            JSONObject answer = answers.getJSONObject(i);
+            if (answer == null) continue;
+            Integer itemNo = answer.getInteger("questionNo") != null ? answer.getInteger("questionNo") : (i + 1);
+            Integer score = answer.getInteger("answer");
+            if (score != null) {
+                answerMap.put(itemNo, score);
+                totalScore += score;
+                
+                if (criticalItems.contains(itemNo) && score == 1) {
+                    criticalCount++;
+                    String warning = getUPICriticalWarning(itemNo);
+                    if (warning != null) criticalWarnings.add(warning);
+                }
+            }
+        }
         
         Map<String, Double> dimensionScores = new LinkedHashMap<>();
         // UPI维度: 躯体症状、情绪状态、人际关系、学习适应
         double somaticUPI = 0, emotionalUPI = 0, relationshipUPI = 0, studyUPI = 0;
         int somaticC = 0, emotionalC = 0, relationshipC = 0, studyC = 0;
         
-        for (int i = 0; i < answers.size(); i++) {
-            JSONObject answer = answers.getJSONObject(i);
-            int itemNo = answer.getInteger("questionNo") != null ? answer.getInteger("questionNo") : (i + 1);
-            int score = answer.getInteger("answer");
-            totalScore += score;
-            
-            if (criticalItems.contains(itemNo) && score == 1) {
-                criticalCount++;
-                String warning = getUPICriticalWarning(itemNo);
-                if (warning != null) criticalWarnings.add(warning);
-            }
-            
-            // 维度归类
-            if (itemNo <= 10) { somaticUPI += score; somaticC++; }
-            else if (itemNo <= 20) { emotionalUPI += score; emotionalC++; }
-            else if (itemNo <= 30) { relationshipUPI += score; relationshipC++; }
+        for (Map.Entry<Integer, Integer> entry : answerMap.entrySet()) {
+            int itemNo = entry.getKey();
+            int score = entry.getValue();
+            if (itemNo <= 15) { somaticUPI += score; somaticC++; }
+            else if (itemNo <= 30) { emotionalUPI += score; emotionalC++; }
+            else if (itemNo <= 45) { relationshipUPI += score; relationshipC++; }
             else { studyUPI += score; studyC++; }
         }
         
-        dimensionScores.put("躯体症状", round(somaticUPI / Math.max(somaticC, 1) * 5, 2));
-        dimensionScores.put("情绪状态", round(emotionalUPI / Math.max(emotionalC, 1) * 5, 2));
-        dimensionScores.put("人际关系", round(relationshipUPI / Math.max(relationshipC, 1) * 5, 2));
-        dimensionScores.put("学习适应", round(studyUPI / Math.max(studyC, 1) * 5, 2));
+        dimensionScores.put("躯体症状", round(somaticC > 0 ? somaticUPI / somaticC * 5 : 0, 2));
+        dimensionScores.put("情绪状态", round(emotionalC > 0 ? emotionalUPI / emotionalC * 5 : 0, 2));
+        dimensionScores.put("人际关系", round(relationshipC > 0 ? relationshipUPI / relationshipC * 5 : 0, 2));
+        dimensionScores.put("学习适应", round(studyC > 0 ? studyUPI / studyC * 5 : 0, 2));
         
         String level;
         String levelDesc;
@@ -704,7 +720,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             } else if (level.contains("轻度")) {
                 stressLevel = "medium";
                 anxietyLevel = "low";
-                depressionLevel = "SDS".equals(scaleCode) ? "low" : "low";
+                depressionLevel = "SDS".equals(scaleCode) ? "medium" : "low";
             }
             
             // 找出得分最高的维度

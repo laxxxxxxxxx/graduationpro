@@ -81,7 +81,8 @@ public class ResourceServiceImpl implements ResourceService {
         }
         
         // 增加浏览量
-        resource.setViewCount(resource.getViewCount() + 1);
+        Integer currentViewCount = resource.getViewCount();
+        resource.setViewCount((currentViewCount == null ? 0 : currentViewCount) + 1);
         resourceMapper.updateById(resource);
 
         recordPositiveFeedback(userId, id, RATING_TYPE_VIEW, SCORE_VIEW, "view", null);
@@ -326,12 +327,12 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteComment(Long commentId, Long userId) {
+    public void deleteComment(Long commentId, Long userId, boolean isAdmin) {
         ResourceComment comment = commentMapper.selectById(commentId);
         if (comment == null) {
             throw new BusinessException("评论不存在");
         }
-        if (!comment.getUserId().equals(userId)) {
+        if (!isAdmin && !comment.getUserId().equals(userId)) {
             throw new BusinessException("只能删除自己的评论");
         }
 
@@ -365,22 +366,98 @@ public class ResourceServiceImpl implements ResourceService {
         LambdaQueryWrapper<EducationResource> resWrapper = new LambdaQueryWrapper<>();
         resWrapper.in(EducationResource::getId, resourceIds);
         resWrapper.eq(EducationResource::getStatus, 1);
-        return resourceMapper.selectList(resWrapper);
+        // 按收藏时间倒序排序 (由于 in 查询不保证顺序，我们需要手动排序或者用 field 排序)
+        List<EducationResource> resources = resourceMapper.selectList(resWrapper);
+        resources.sort(Comparator.comparingInt(r -> resourceIds.indexOf(r.getId())));
+        return resources;
+    }
+
+    @Override
+    public List<EducationResource> getUserLikes(Long userId) {
+        LambdaQueryWrapper<ResourceLike> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ResourceLike::getUserId, userId);
+        wrapper.orderByDesc(ResourceLike::getCreatedAt);
+        List<ResourceLike> likes = likeMapper.selectList(wrapper);
+
+        if (likes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> resourceIds = likes.stream()
+                .map(ResourceLike::getResourceId)
+                .collect(Collectors.toList());
+
+        LambdaQueryWrapper<EducationResource> resWrapper = new LambdaQueryWrapper<>();
+        resWrapper.in(EducationResource::getId, resourceIds);
+        resWrapper.eq(EducationResource::getStatus, 1);
+        List<EducationResource> resources = resourceMapper.selectList(resWrapper);
+        resources.sort(Comparator.comparingInt(r -> resourceIds.indexOf(r.getId())));
+        return resources;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createResource(EducationResource resource) {
+        resource.setViewCount(0);
+        resource.setLikeCount(0);
+        resource.setFavoriteCount(0);
+        resource.setCommentCount(0);
+        if (resource.getStatus() == null) {
+            resource.setStatus(1); // 默认直接发布
+        }
+        if (resource.getPublishTime() == null) {
+            resource.setPublishTime(new Date());
+        }
+        resourceMapper.insert(resource);
+        log.info("管理员上传资源成功: {}", resource.getTitle());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateResource(EducationResource resource) {
+        if (resource.getId() == null) {
+            throw new BusinessException("资源ID不能为空");
+        }
+        resourceMapper.updateById(resource);
+        log.info("管理员更新资源成功: {}", resource.getTitle());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteResource(Long id) {
+        EducationResource resource = resourceMapper.selectById(id);
+        if (resource == null) {
+            throw new BusinessException("资源不存在");
+        }
+        // 软删除
+        resource.setStatus(2); // 2-下架
+        resourceMapper.updateById(resource);
+        log.info("管理员删除资源成功: {}", id);
     }
 
     private void recordPositiveFeedback(Long userId, Long resourceId, Integer ratingType,
                                         Double score, String behaviorType, Integer duration) {
+        // 1. 基本判空
         if (userId == null || resourceId == null) {
             return;
         }
+        
+        // 2. 豁免管理员 (ID=1 通常是管理员, 或通过用户名判断)
+        // 注意：这里为了性能不重复查询数据库，采用ID豁免或在外部判断
+        if (userId <= 1L) {
+            return;
+        }
+        
         try {
+            // 使用 try-catch 确保推荐逻辑不影响主业务
             ratingMapper.upsertResourceRating(userId, resourceId, ratingType, score, DEFAULT_RATING_WEIGHT);
             if (behaviorType != null) {
                 ratingMapper.insertResourceBehaviorLog(userId, behaviorType, resourceId, duration);
             }
-        } catch (Exception e) {
-            log.warn("记录资源推荐反馈失败: userId={}, resourceId={}, ratingType={}, reason={}",
-                    userId, resourceId, ratingType, e.getMessage());
+        } catch (Throwable t) {
+            // 使用 Throwable 捕获所有可能的错误（包括 Error）
+            log.warn("记录资源行为反馈失败 (不影响业务): userId={}, resourceId={}, reason={}",
+                    userId, resourceId, t.getMessage());
         }
     }
 

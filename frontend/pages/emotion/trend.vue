@@ -66,7 +66,12 @@ export default {
 }
 
 .chart-card {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   margin-bottom: $spacing-lg;
   
@@ -77,7 +82,12 @@ export default {
 }
 
 .stats-card {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx 20rpx;
   display: flex;
   justify-content: space-around;

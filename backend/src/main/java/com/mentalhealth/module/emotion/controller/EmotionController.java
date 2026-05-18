@@ -31,11 +31,16 @@ public class EmotionController {
             @RequestHeader("Authorization") String token,
             @RequestBody EmotionDiary diary) {
         
-        String actualToken = token.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserIdFromToken(actualToken);
-        
-        emotionService.createDiary(userId, diary);
-        return Result.success("创建成功", null);
+        try {
+            String actualToken = token.replace("Bearer ", "");
+            Long userId = jwtUtil.getUserIdFromToken(actualToken);
+            
+            emotionService.createDiary(userId, diary);
+            return Result.success("保存成功", null);
+        } catch (Exception e) {
+            log.error("创建日记失败: {}", e.getMessage(), e);
+            return Result.error("保存失败: " + e.getMessage());
+        }
     }
     
     @PutMapping("/diary/{id}")
@@ -45,11 +50,16 @@ public class EmotionController {
             @PathVariable Long id,
             @RequestBody EmotionDiary diary) {
         
-        String actualToken = token.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserIdFromToken(actualToken);
-        
-        emotionService.updateDiary(userId, id, diary);
-        return Result.success("更新成功", null);
+        try {
+            String actualToken = token.replace("Bearer ", "");
+            Long userId = jwtUtil.getUserIdFromToken(actualToken);
+            
+            emotionService.updateDiary(userId, id, diary);
+            return Result.success("更新成功", null);
+        } catch (Exception e) {
+            log.error("更新日记失败: {}", e.getMessage(), e);
+            return Result.error("更新失败: " + e.getMessage());
+        }
     }
     
     @DeleteMapping("/diary/{id}")

@@ -44,8 +44,8 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
             "JOIN education_resource er ON r1_eff.resource_id = er.id " +
             "WHERE er.status = 1 " +
             "GROUP BY r2_eff.user_id " +
-            "HAVING common_resources >= 2 " +
-            "ORDER BY similarity DESC " +
+            "HAVING common_resources >= 1 " +
+            "ORDER BY similarity DESC, user_id ASC " +
             "LIMIT #{topN}")
     List<Map<String, Object>> findSimilarUsers(@Param("userId") Long userId, @Param("topN") int topN);
     
@@ -65,8 +65,8 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
             "JOIN education_resource er ON r2_eff.resource_id = er.id " +
             "WHERE er.status = 1 " +
             "GROUP BY r2_eff.resource_id " +
-            "HAVING common_users >= 2 " +
-            "ORDER BY similarity DESC " +
+            "HAVING common_users >= 1 " +
+            "ORDER BY similarity DESC, resource_id ASC " +
             "LIMIT #{topN}")
     List<Map<String, Object>> findSimilarResources(@Param("resourceId") Long resourceId, @Param("topN") int topN);
     
@@ -101,7 +101,7 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
             "WHERE er.status = 1 " +
             "AND er.id NOT IN (SELECT resource_id FROM user_resource_rating WHERE user_id = #{userId}) " +
             "GROUP BY er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty " +
-            "ORDER BY match_score DESC " +
+            "ORDER BY match_score DESC, er.id ASC " +
             "LIMIT #{topN}")
     List<Map<String, Object>> getContentBasedRecommendations(@Param("userId") Long userId, @Param("topN") int topN);
     
@@ -111,15 +111,15 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
      */
     @Select("SELECT er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty, " +
             "MAX(CASE " +
-            " WHEN upp.dominant_issues LIKE CONCAT('%', rk.keyword, '%') THEN 80 " +
-            " WHEN rk.keyword IN ('压力管理','压力应对','焦虑','焦虑缓解','情绪调节','情绪管理','放松技巧','正念','冥想','正念冥想','减压') " +
-            "   AND (upp.stress_level IN ('medium','high') OR upp.anxiety_level IN ('medium','high')) THEN 70 " +
+            " WHEN upp.dominant_issues LIKE CONCAT('%', rk.keyword, '%') THEN 95 " +
             " WHEN rk.keyword IN ('抑郁','抑郁干预','情绪识别','情绪调节','情绪管理','积极心理学','自我关怀') " +
-            "   AND upp.depression_level IN ('medium','high') THEN 70 " +
+            "   AND upp.depression_level IN ('medium','high') THEN 90 " +
+            " WHEN rk.keyword IN ('压力管理','压力应对','焦虑','焦虑缓解','情绪调节','情绪管理','放松技巧','正念','冥想','正念冥想','减压') " +
+            "   AND (upp.stress_level IN ('medium','high') OR upp.anxiety_level IN ('medium','high')) THEN 85 " +
             " WHEN rk.keyword IN ('职业规划','就业指导','职业发展') " +
-            "   AND upp.dominant_issues LIKE '%就业%' THEN 75 " +
+            "   AND upp.dominant_issues LIKE '%就业%' THEN 80 " +
             " WHEN rk.keyword IN ('时间管理','学习效率','考试焦虑') " +
-            "   AND upp.dominant_issues LIKE '%学业%' THEN 75 " +
+            "   AND upp.dominant_issues LIKE '%学业%' THEN 80 " +
             " ELSE 0 END) as match_score " +
             "FROM user_psychological_profile upp " +
             "CROSS JOIN resource_keywords rk " +
@@ -129,7 +129,7 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
             "AND er.id NOT IN (SELECT resource_id FROM user_resource_rating WHERE user_id = #{userId}) " +
             "GROUP BY er.id, er.title, er.type, er.cover_url, er.tags, er.difficulty " +
             "HAVING match_score > 0 " +
-            "ORDER BY match_score DESC " +
+            "ORDER BY match_score DESC, er.id ASC " +
             "LIMIT #{topN}")
     List<Map<String, Object>> getProfileBasedRecommendations(@Param("userId") Long userId, @Param("topN") int topN);
     
@@ -149,7 +149,7 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
                                                       @Param("limit") int limit);
     
     /**
-     * 获取用户行为统计（按资源关键词聚合，用于更新兴趣标签）
+     * 获取用户最近的行为统计（按资源关键词聚合，用于更新兴趣标签）
      * 时间衰减权重融入聚合计算
      */
     @Select("SELECT rk.keyword, rk.category, " +
@@ -165,6 +165,15 @@ public interface UserResourceRatingMapper extends BaseMapper<UserResourceRating>
     List<Map<String, Object>> getUserBehaviorKeywordStats(@Param("userId") Long userId,
                                                             @Param("days") int days,
                                                             @Param("topN") int topN);
+
+    /**
+     * 获取用户最近的日记信息（用于提取兴趣标签）
+     */
+    @Select("SELECT mood_tags, content " +
+            "FROM emotion_diary " +
+            "WHERE user_id = #{userId} " +
+            "AND diary_date >= DATE_SUB(NOW(), INTERVAL #{days} DAY)")
+    List<Map<String, Object>> getRecentDiaries(@Param("userId") Long userId, @Param("days") int days);
     
     /**
      * 清理用户过期的兴趣标签（超过指定天数未更新的标签）

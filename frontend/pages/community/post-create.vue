@@ -145,7 +145,12 @@ export default {
 }
 
 .form {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   margin-bottom: $spacing-lg;
   
@@ -175,12 +180,11 @@ export default {
       color: $text-primary;
       transition: all 0.3s;
       box-sizing: border-box;
-      
-      &:focus {
-        background: #fff;
-        border-color: $primary-color;
-        box-shadow: $shadow-sm;
-      }
+    }
+    
+    .input {
+      height: 88rpx;
+      min-height: 88rpx;
     }
     
     .textarea {
@@ -203,7 +207,15 @@ export default {
 }
 
 .submit-btn {
-  @extend %btn-primary;
+  background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+  color: #fff;
+  border-radius: 50rpx;
+  border: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
   width: 100%;
   height: 100rpx;
   font-size: $font-lg;

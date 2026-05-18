@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 大学生心理健康教育与自测平台 - 启动类
  */
 @SpringBootApplication
-@MapperScan("com.mentalhealth.module.*.mapper")
+@MapperScan("com.mentalhealth.module.**.mapper")
 public class MentalHealthApplication {
     
     public static void main(String[] args) {

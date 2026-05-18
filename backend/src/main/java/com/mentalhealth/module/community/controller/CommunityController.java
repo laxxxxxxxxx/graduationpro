@@ -159,8 +159,12 @@ public class CommunityController {
         
         String actualToken = token.replace("Bearer ", "");
         Long userId = jwtUtil.getUserIdFromToken(actualToken);
+        Integer role = jwtUtil.getRoleFromToken(actualToken);
+        String username = jwtUtil.getUsernameFromToken(actualToken);
         
-        communityService.deletePost(userId, id);
+        boolean isAdmin = (role != null && role == 3) || "admin".equals(username);
+        
+        communityService.deletePost(userId, id, isAdmin);
         return Result.success("删除成功", null);
     }
     
@@ -172,8 +176,12 @@ public class CommunityController {
         
         String actualToken = token.replace("Bearer ", "");
         Long userId = jwtUtil.getUserIdFromToken(actualToken);
+        Integer role = jwtUtil.getRoleFromToken(actualToken);
+        String username = jwtUtil.getUsernameFromToken(actualToken);
         
-        communityService.deleteComment(userId, id);
+        boolean isAdmin = (role != null && role == 3) || "admin".equals(username);
+        
+        communityService.deleteComment(userId, id, isAdmin);
         return Result.success("删除成功", null);
     }
 }

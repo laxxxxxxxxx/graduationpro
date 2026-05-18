@@ -291,12 +291,26 @@ export default {
   }
   
   .register-btn {
-    @extend %btn-primary;
+    background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+    color: #fff;
+    border-radius: 50rpx;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
+
+    &:active {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
     height: 100rpx;
     font-size: $font-lg;
-    margin-top: $spacing-xl;
+    margin-top: $spacing-lg;
     width: 100%;
   }
+
   
   .actions {
     display: flex;

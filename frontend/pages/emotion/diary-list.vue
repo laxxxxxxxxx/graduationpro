@@ -97,7 +97,12 @@ export default {
 
 .diary-list {
   .diary-item {
-    @extend %card;
+    background: #ffffff;
+    border-radius: 32rpx;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     padding: $spacing-lg;
     transition: transform 0.2s;
     
@@ -138,7 +143,11 @@ export default {
       color: $text-primary;
       line-height: 1.6;
       margin-bottom: $spacing-md;
-      @extend %text-ellipsis-2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
     
     .tags {

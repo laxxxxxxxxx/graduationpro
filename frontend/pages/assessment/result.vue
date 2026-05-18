@@ -446,7 +446,12 @@ export default {
   margin-bottom: $spacing-lg;
   
   .info-item {
-    @extend %card;
+    background: #ffffff;
+    border-radius: 32rpx;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     padding: 30rpx;
     margin-bottom: 0;
     
@@ -470,7 +475,12 @@ export default {
 
 // 风险提示
 .risk-section {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   border-left: 10rpx solid $error-color;
   
@@ -494,7 +504,12 @@ export default {
 
 // 参考范围
 .reference-section {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   
   .ref-item {
@@ -522,7 +537,12 @@ export default {
 
 // 维度分析
 .dimension-section {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   
   .section-hint {
@@ -608,7 +628,12 @@ export default {
 
 // 专业解读
 .interpretation-card {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   
   .interp-content {
@@ -648,7 +673,12 @@ export default {
 
 // 干预建议
 .suggestions-card {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   
   .suggestion-group {
@@ -725,7 +755,15 @@ export default {
     text-align: center;
     
     &.btn-primary {
-      @extend %btn-primary;
+      background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+      color: #fff;
+      border-radius: 50rpx;
+      border: none;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
     }
     
     &.btn-outline {

@@ -276,31 +276,31 @@ WHERE title = '时间管理与学习效率';
 -- 2.1 正念冥想入门指南（视频）
 UPDATE education_resource SET 
 description = '本视频由专业冥想导师带领，从零开始教你正念冥想的基础技巧。包含呼吸练习、身体扫描和日常正念三个模块，适合完全零基础的初学者。学习后你将掌握最简单实用的正念方法，可以在焦虑、失眠或注意力不集中时随时使用。',
-media_url = 'https://media.example.com/videos/mindfulness-intro.mp4'
+media_url = '/uploads/videos/mindfulness.mp4'
 WHERE title = '正念冥想入门指南';
 
 -- 2.2 情绪管理ABC理论（视频）
 UPDATE education_resource SET 
 description = '本视频深入浅出地讲解了阿尔伯特·艾利斯的情绪ABC理论——激发事件(A)、信念(B)和情绪后果(C)之间的关系。学会识别和调整非理性信念，是管理情绪的关键。视频配有丰富的案例和互动练习，帮助你更好理解。',
-media_url = 'https://media.example.com/videos/emotion-abc.mp4'
+media_url = '/uploads/videos/emotion_abc.mp4'
 WHERE title = '情绪管理ABC理论';
 
 -- 2.3 抑郁情绪的识别与应对（视频）
 UPDATE education_resource SET 
 description = '临床心理学家系统讲解抑郁情绪与抑郁症的区别，教授识别早期信号的方法，以及科学有效的应对策略。包含认知行为疗法的核心工具和实践指导，适合所有希望了解抑郁情绪管理的大学生观看。',
-media_url = 'https://media.example.com/videos/depression-coping.mp4'
+media_url = '/uploads/videos/breathing.mp4'
 WHERE title = '抑郁情绪的识别与应对';
 
 -- 2.4 恋爱心理学基础（视频）
 UPDATE education_resource SET 
 description = '情感咨询师从依恋理论出发，讲解恋爱中的心理动力学。内容包括：依恋类型自测、恋爱中的吸引力法则、亲密关系的五个阶段、冲突处理技巧。帮助大学生建立健康的恋爱观和交往模式。',
-media_url = 'https://media.example.com/videos/love-psychology.mp4'
+media_url = '/uploads/videos/mindfulness.mp4'
 WHERE title = '恋爱心理学基础';
 
 -- 2.5 社交恐惧的克服方法（视频）
 UPDATE education_resource SET 
 description = '心理治疗师讲解社交恐惧的成因和分步克服策略。从认知重建到行为暴露练习，提供一套完整的自助方案。视频中包括了真实的案例分享和实用的社交技能训练，帮助你在社交场合更自信。',
-media_url = 'https://media.example.com/videos/social-anxiety.mp4'
+media_url = '/uploads/videos/breathing.mp4'
 WHERE title = '社交恐惧的克服方法';
 
 -- ============================================

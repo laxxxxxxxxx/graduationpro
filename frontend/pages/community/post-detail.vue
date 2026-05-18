@@ -1,48 +1,53 @@
 <template>
   <view class="container">
-    <view class="post-header">
+    <!-- 帖子主体 -->
+    <view class="post-card card" v-if="post">
+      <view class="post-header">
+        <view class="author-info">
+          <view class="avatar">{{ (post.anonymousId || '用')[0] }}</view>
+          <view class="meta">
+            <text class="nickname">{{ post.anonymousId }}</text>
+            <text class="time">{{ formatTime(post.createdAt) }}</text>
+          </view>
+        </view>
+        <view class="header-right">
+          <text class="delete-post" v-if="isAdmin" @click="confirmDeletePost">删除帖子</text>
+          <text class="category" v-if="post.categoryName">{{ post.categoryName }}</text>
+        </view>
+      </view>
+      
       <text class="title">{{ post.title }}</text>
-      <view class="meta">
-        <text class="author">{{ post.anonymousId }}</text>
-        <text class="category" v-if="post.categoryName">{{ post.categoryName }}</text>
-        <text class="time">{{ formatDate(post.createdAt) }}</text>
-      </view>
-      <!-- 作者操作按钮 -->
-      <view class="author-actions" v-if="isPostAuthor">
-        <text class="action-btn edit" @click="editPost">编辑</text>
-        <text class="action-btn delete" @click="confirmDeletePost">删除</text>
-      </view>
-    </view>
-    
-    <view class="post-content">
-      <text>{{ post.content }}</text>
-    </view>
-    
-    <view class="post-stats">
-      <view class="stat-item" @click="toggleLike">
-        <text class="icon">{{ liked ? '❤️' : '🤍' }}</text>
-        <text class="count">{{ post.likeCount }}</text>
-      </view>
-      <view class="stat-item">
-        <text class="icon">👁</text>
-        <text class="count">{{ post.viewCount }}</text>
-      </view>
-      <view class="stat-item">
-        <text class="icon">💬</text>
-        <text class="count">{{ post.commentCount }}</text>
+      <text class="content">{{ post.content }}</text>
+      
+      <view class="post-stats">
+        <view class="stat-item" @click="handleToggleLike">
+          <text class="icon">{{ liked ? '❤️' : '🤍' }}</text>
+          <text class="count" :class="{active: liked}">{{ post.likeCount }}</text>
+        </view>
+        <view class="stat-item">
+          <text class="icon">💬</text>
+          <text class="count">{{ post.commentCount }}</text>
+        </view>
+        <view class="stat-item">
+          <text class="icon">👁</text>
+          <text class="count">{{ post.viewCount }}</text>
+        </view>
       </view>
     </view>
     
-    <view class="comments-section">
+    <!-- 评论列表 -->
+    <view class="comments-section" v-if="post">
       <text class="section-title">评论 ({{ comments.length }})</text>
       <view class="comment-list">
-        <view class="comment-item" v-for="comment in comments" :key="comment.id">
+        <view class="comment-item" v-for="(comment, index) in comments" :key="index">
           <view class="comment-top">
             <text class="comment-author">{{ comment.anonymousId }}</text>
-            <text class="comment-delete" v-if="currentUserId === comment.userId" @click="confirmDeleteComment(comment.id)">删除</text>
+            <text class="comment-delete" v-if="isAdmin || currentUserId === comment.userId" @click="confirmDeleteComment(comment.id)">删除</text>
           </view>
           <text class="comment-content">{{ comment.content }}</text>
+          <text class="comment-time">{{ formatTime(comment.createdAt) }}</text>
         </view>
+        
         <view class="no-comment" v-if="comments.length === 0">
           <image class="empty-image" src="/static/images/empty-state.png" mode="aspectFit"></image>
           <text>暂无评论，来抢沙发吧~</text>
@@ -50,31 +55,45 @@
       </view>
     </view>
     
-    <view class="comment-input">
-      <input class="input" v-model="commentText" placeholder="写下你的评论..." />
-      <button class="send-btn" @click="sendComment">发送</button>
+    <!-- 底部输入框 -->
+    <view class="comment-input-bar" v-if="post">
+      <input 
+        class="input" 
+        v-model="commentText" 
+        placeholder="说点什么吧..." 
+        confirm-type="send"
+        @confirm="sendComment"
+      />
+      <button class="send-btn" @click="sendComment" :disabled="!commentText.trim()">发送</button>
+    </view>
+    
+    <!-- 加载中 -->
+    <view class="loading" v-if="!post">
+      <text>加载中...</text>
     </view>
   </view>
 </template>
 
 <script>
-import { getPostDetail, createComment, likePost, unlikePost, getComments, deletePost, deleteComment } from '@/api/community'
+import { getPostDetail, getComments, createComment, deleteComment, deletePost, likePost, unlikePost } from '@/api/community'
+import { resolveUrl } from '@/utils/request'
 
 export default {
   data() {
     return {
       postId: null,
-      post: {},
+      post: null,
       comments: [],
+      commentText: '',
       liked: false,
-      currentUserId: null,
-      commentText: ''
+      currentUserId: null
     }
   },
-  
+
   computed: {
-    isPostAuthor() {
-      return this.currentUserId && this.post.userId && this.currentUserId === this.post.userId
+    isAdmin() {
+      const userInfo = uni.getStorageSync('userInfo')
+      return userInfo && (userInfo.role === 3 || userInfo.username === 'admin')
     }
   },
   
@@ -105,33 +124,38 @@ export default {
       }
     },
     
-    editPost() {
-      uni.navigateTo({
-        url: `/pages/community/post-create?id=${this.postId}&mode=edit`
-      })
-    },
-    
-    confirmDeletePost() {
-      uni.showModal({
-        title: '确认删除',
-        content: '删除后无法恢复，确定要删除这个帖子吗？',
-        success: (res) => {
-          if (res.confirm) {
-            this.handleDeletePost()
-          }
-        }
-      })
-    },
-    
-    async handleDeletePost() {
+    async handleToggleLike() {
+      if (!this.checkLogin()) return
+      
       try {
-        await deletePost(this.postId)
-        uni.showToast({ title: '删除成功', icon: 'success' })
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
+        if (this.liked) {
+          await unlikePost(this.postId)
+          this.post.likeCount--
+          this.liked = false
+        } else {
+          await likePost(this.postId)
+          this.post.likeCount++
+          this.liked = true
+        }
       } catch (error) {
-        console.error('删除帖子失败:', error)
+        console.error('点赞失败:', error)
+      }
+    },
+    
+    async sendComment() {
+      if (!this.checkLogin()) return
+      if (!this.commentText.trim()) return
+      
+      try {
+        await createComment(this.postId, {
+          content: this.commentText.trim()
+        })
+        this.commentText = ''
+        uni.showToast({ title: '发表成功', icon: 'success' })
+        this.loadComments()
+        this.post.commentCount++
+      } catch (error) {
+        console.error('发表评论失败:', error)
       }
     },
     
@@ -150,54 +174,55 @@ export default {
     async handleDeleteComment(commentId) {
       try {
         await deleteComment(commentId)
-        uni.showToast({ title: '删除成功', icon: 'success' })
+        uni.showToast({ title: '已删除', icon: 'none' })
         this.loadComments()
-        if (this.post.commentCount > 0) {
-          this.post.commentCount--
-        }
+        this.post.commentCount--
       } catch (error) {
-        console.error('删除评论失败:', error)
+        console.error('删除失败:', error)
+      }
+    },
+
+    confirmDeletePost() {
+      uni.showModal({
+        title: '确认删除',
+        content: '管理员，确定要删除这条帖子吗？',
+        success: (res) => {
+          if (res.confirm) {
+            this.handleDeletePost()
+          }
+        }
+      })
+    },
+
+    async handleDeletePost() {
+      try {
+        await deletePost(this.postId)
+        uni.showToast({ title: '已删除', icon: 'success' })
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1500)
+      } catch (error) {
+        console.error('删除帖子失败:', error)
       }
     },
     
-    async toggleLike() {
-      try {
-        if (this.liked) {
-          await unlikePost(this.postId)
-          this.liked = false
-          this.post.likeCount--
-        } else {
-          await likePost(this.postId)
-          this.liked = true
-          this.post.likeCount++
-        }
-      } catch (error) {
-        console.error('点赞操作失败:', error)
+    checkLogin() {
+      const token = uni.getStorageSync('token')
+      if (!token) {
+        uni.navigateTo({ url: '/pages/login/login' })
+        return false
       }
+      return true
     },
     
-    async sendComment() {
-      if (!this.commentText.trim()) {
-        uni.showToast({ title: '请输入评论内容', icon: 'none' })
-        return
-      }
-      
-      try {
-        await createComment(this.postId, {
-          content: this.commentText
-        })
-        
-        uni.showToast({ title: '评论成功', icon: 'success' })
-        this.commentText = ''
-        
-        // 重新加载评论
-        this.loadComments()
-        
-        // 更新评论数
-        this.post.commentCount++
-      } catch (error) {
-        console.error('评论失败:', error)
-      }
+    formatTime(dateStr) {
+      if (!dateStr) return ''
+      const date = new Date(dateStr)
+      return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+    },
+
+    resolveCoverUrl(url) {
+      return resolveUrl(url)
     }
   }
 }
@@ -206,214 +231,257 @@ export default {
 <style lang="scss" scoped>
 .container {
   padding: $spacing-md;
-  padding-bottom: 160rpx;
+  padding-bottom: 120rpx;
 }
 
-.post-header {
-  @extend %card;
+.post-card {
   padding: 40rpx;
-  border-radius: $radius-lg $radius-lg 0 0;
-  margin-bottom: 0;
-  box-shadow: none;
-  border-bottom: 1rpx solid $border-color;
+  
+  .post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30rpx;
+    
+    .author-info {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+      
+      .avatar {
+        width: 70rpx;
+        height: 70rpx;
+        background: $primary-gradient;
+        border-radius: $radius-round;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: $font-lg;
+      }
+      
+      .meta {
+        display: flex;
+        flex-direction: column;
+        
+        .nickname {
+          font-size: $font-sm;
+          font-weight: 600;
+          color: $text-primary;
+        }
+        
+        .time {
+          font-size: $font-xs;
+          color: $text-tertiary;
+        }
+      }
+    }
+    
+    .category {
+      font-size: $font-xs;
+      color: $primary-color;
+      background: $primary-light;
+      padding: 6rpx 20rpx;
+      border-radius: $radius-sm;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16rpx;
+
+      .delete-post {
+        font-size: $font-xs;
+        color: $error-color;
+        border: 1rpx solid $error-color;
+        padding: 4rpx 16rpx;
+        border-radius: $radius-sm;
+      }
+    }
+  }
   
   .title {
     display: block;
-    font-size: 40rpx;
+    font-size: $font-lg;
     font-weight: 700;
     color: $text-primary;
-    margin-bottom: $spacing-md;
+    margin-bottom: 24rpx;
     line-height: 1.4;
   }
   
-  .meta {
-    display: flex;
-    gap: 30rpx;
-    font-size: $font-xs;
-    color: $text-tertiary;
-    font-weight: 500;
+  .content {
+    display: block;
+    font-size: $font-md;
+    color: $text-secondary;
+    line-height: 1.7;
+    margin-bottom: 40rpx;
+    white-space: pre-wrap;
   }
   
-  .author-actions {
-    margin-top: 24rpx;
+  .post-stats {
     display: flex;
-    gap: 24rpx;
+    gap: 40rpx;
+    border-top: 1rpx solid $border-color;
+    padding-top: 30rpx;
     
-    .action-btn {
-      font-size: $font-xs;
-      padding: 8rpx 24rpx;
-      border-radius: $radius-sm;
-      font-weight: 500;
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 10rpx;
       
-      &.edit {
-        color: $primary-color;
-        background: $primary-light;
+      .icon {
+        font-size: 36rpx;
       }
       
-      &.delete {
-        color: $error-color;
-        background: #FFF5F5;
+      .count {
+        font-size: $font-sm;
+        color: $text-tertiary;
+        
+        &.active {
+          color: $primary-color;
+          font-weight: 600;
+        }
       }
-    }
-  }
-}
-
-.post-content {
-  @extend %card;
-  padding: 40rpx;
-  border-radius: 0 0 $radius-lg $radius-lg;
-  margin-top: 0;
-  box-shadow: $shadow-sm;
-  font-size: $font-md;
-  color: $text-secondary;
-  line-height: 1.8;
-  letter-spacing: 0.5rpx;
-}
-
-.post-stats {
-  @extend %card;
-  padding: 30rpx 40rpx;
-  display: flex;
-  justify-content: space-around;
-  margin-top: $spacing-md;
-  
-  .stat-item {
-    display: flex;
-    align-items: center;
-    gap: 12rpx;
-    padding: 10rpx 30rpx;
-    border-radius: $radius-xl;
-    transition: all 0.2s;
-    
-    &:active {
-      background: $bg-color;
-    }
-    
-    .icon {
-      font-size: 40rpx;
-    }
-    
-    .count {
-      font-size: $font-sm;
-      color: $text-secondary;
-      font-weight: 600;
     }
   }
 }
 
 .comments-section {
-  @extend %card;
-  padding: 40rpx;
-  margin-top: $spacing-lg;
+  margin-top: 40rpx;
   
   .section-title {
-    @extend %section-title;
-    margin-bottom: 40rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #4A4A4A;
+    margin-bottom: 24rpx;
+    position: relative;
+    padding-left: 20rpx;
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8rpx;
+      height: 32rpx;
+      background: #FF8C8C;
+      border-radius: 4rpx;
+    }
+    margin-bottom: 24rpx;
   }
   
-  .comment-item {
-    padding: 30rpx 0;
-    border-bottom: 1rpx solid $border-color;
-    
-    &:last-child {
-      border-bottom: none;
-    }
-    
-    .comment-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12rpx;
+  .comment-list {
+    .comment-item {
+      background: #ffffff;
+      border-radius: 32rpx;
+      padding: 32rpx;
+      margin-bottom: 24rpx;
+      box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      padding: 30rpx;
+      margin-bottom: 20rpx;
       
-      .comment-author {
-        font-size: $font-sm;
-        color: $text-primary;
-        font-weight: 600;
+      .comment-top {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 16rpx;
+        
+        .comment-author {
+          font-size: $font-sm;
+          font-weight: 600;
+          color: $text-primary;
+        }
+        
+        .comment-delete {
+          font-size: $font-xs;
+          color: $error-color;
+        }
       }
       
-      .comment-delete {
+      .comment-content {
+        display: block;
+        font-size: $font-md;
+        color: $text-secondary;
+        line-height: 1.5;
+        margin-bottom: 12rpx;
+      }
+      
+      .comment-time {
         font-size: $font-xs;
-        color: $error-color;
-        padding: 6rpx 16rpx;
-        background: #FFF5F5;
-        border-radius: $radius-sm;
-        font-weight: 500;
+        color: $text-tertiary;
       }
-    }
-    
-    .comment-content {
-      font-size: $font-md;
-      color: $text-secondary;
-      line-height: 1.6;
-    }
-  }
-  
-  .no-comment {
-    text-align: center;
-    padding: 80rpx 0;
-    font-size: $font-sm;
-    color: $text-tertiary;
-
-    .empty-image {
-      width: 220rpx;
-      height: 170rpx;
-      margin-bottom: $spacing-sm;
-    }
-
-    text {
-      display: block;
     }
   }
 }
 
-.comment-input {
+.no-comment {
+  text-align: center;
+  padding: 80rpx 0;
+  font-size: $font-sm;
+  color: $text-tertiary;
+
+  .empty-image {
+    width: 220rpx;
+    height: 170rpx;
+    margin-bottom: $spacing-sm;
+  }
+
+  text {
+    display: block;
+  }
+}
+
+.comment-input-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  padding: 24rpx 40rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  height: 110rpx;
+  background: #fff;
   display: flex;
+  align-items: center;
+  padding: 0 30rpx;
+  padding-bottom: env(safe-area-inset-bottom);
   gap: 20rpx;
-  box-shadow: 0 -10rpx 30rpx rgba(0,0,0,0.05);
+  box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.05);
   z-index: 100;
   
   .input {
     flex: 1;
-    height: 84rpx;
-    padding: 0 32rpx;
+    height: 76rpx;
     background: $bg-color;
     border-radius: $radius-xl;
-    font-size: $font-md;
-    box-shadow: inset 0 2rpx 4rpx rgba(0,0,0,0.03);
+    padding: 0 30rpx;
+    font-size: $font-sm;
   }
   
   .send-btn {
-    width: 140rpx;
-    height: 84rpx;
-    line-height: 84rpx;
-    @extend %btn-primary;
-    border-radius: $radius-xl;
-    font-size: $font-md;
+    width: 120rpx;
+    height: 70rpx;
+    line-height: 70rpx;
+    background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+    color: #fff;
+    border-radius: 50rpx;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
+    font-size: $font-sm;
     padding: 0;
     margin: 0;
+    
+    &[disabled] {
+      opacity: 0.5;
+    }
   }
 }
-</style>
-);
-  }
-  
-  .send-btn {
-    width: 140rpx;
-    height: 84rpx;
-    line-height: 84rpx;
-    @extend %btn-primary;
-    border-radius: $radius-xl;
-    font-size: $font-md;
-    padding: 0;
-    margin: 0;
-  }
+
+.loading {
+  text-align: center;
+  padding: 100rpx 0;
+  color: $text-tertiary;
 }
 </style>

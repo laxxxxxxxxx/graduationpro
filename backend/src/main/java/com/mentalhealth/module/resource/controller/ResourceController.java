@@ -33,7 +33,9 @@ public class ResourceController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Integer type,
             @RequestParam(required = false) Integer categoryId) {
+        log.info("获取资源列表: pageNum={}, pageSize={}, type={}, categoryId={}", pageNum, pageSize, type, categoryId);
         Page<EducationResource> page = resourceService.getResourceList(pageNum, pageSize, type, categoryId);
+        log.info("资源列表加载完成: total={}", page.getTotal());
         return Result.success(page);
     }
     
@@ -140,8 +142,14 @@ public class ResourceController {
     public Result<Void> deleteComment(
             @RequestHeader("Authorization") String token,
             @PathVariable Long commentId) {
-        Long userId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
-        resourceService.deleteComment(commentId, userId);
+        String actualToken = token.replace("Bearer ", "");
+        Long userId = jwtUtil.getUserIdFromToken(actualToken);
+        Integer role = jwtUtil.getRoleFromToken(actualToken);
+        String username = jwtUtil.getUsernameFromToken(actualToken);
+        
+        boolean isAdmin = (role != null && role == 3) || "admin".equals(username);
+        
+        resourceService.deleteComment(commentId, userId, isAdmin);
         return Result.success("删除成功", null);
     }
 
@@ -152,5 +160,55 @@ public class ResourceController {
         Long userId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
         List<EducationResource> list = resourceService.getUserFavorites(userId);
         return Result.success(list);
+    }
+
+    @GetMapping("/likes")
+    @ApiOperation("获取用户点赞列表")
+    public Result<List<EducationResource>> getUserLikes(
+            @RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
+        List<EducationResource> list = resourceService.getUserLikes(userId);
+        return Result.success(list);
+    }
+
+    @PostMapping
+    @ApiOperation("上传资源(管理员)")
+    public Result<Void> createResource(
+            @RequestHeader("Authorization") String token,
+            @RequestBody EducationResource resource) {
+        checkAdmin(token);
+        resourceService.createResource(resource);
+        return Result.success("上传成功", null);
+    }
+
+    @PutMapping("/{id}")
+    @ApiOperation("更新资源(管理员)")
+    public Result<Void> updateResource(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long id,
+            @RequestBody EducationResource resource) {
+        checkAdmin(token);
+        resource.setId(id);
+        resourceService.updateResource(resource);
+        return Result.success("更新成功", null);
+    }
+
+    @DeleteMapping("/{id}")
+    @ApiOperation("下架资源(管理员)")
+    public Result<Void> deleteResource(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long id) {
+        checkAdmin(token);
+        resourceService.deleteResource(id);
+        return Result.success("下架成功", null);
+    }
+
+    private void checkAdmin(String token) {
+        String actualToken = token.replace("Bearer ", "");
+        Integer role = jwtUtil.getRoleFromToken(actualToken);
+        String username = jwtUtil.getUsernameFromToken(actualToken);
+        if (!((role != null && role == 3) || "admin".equals(username))) {
+            throw new com.mentalhealth.common.exception.BusinessException(403, "权限不足，仅管理员可操作");
+        }
     }
 }

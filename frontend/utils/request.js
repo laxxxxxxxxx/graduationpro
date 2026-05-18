@@ -16,6 +16,21 @@ export const getApiBaseUrl = () => {
   return uni.getStorageSync('apiBaseUrl') || DEFAULT_BASE_URL
 }
 
+/**
+ * 解析URL，处理相对路径和绝对路径
+ */
+export const resolveUrl = (url) => {
+  if (!url) return ''
+  if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
+    return url
+  }
+  const baseUrl = getApiBaseUrl()
+  if (url.startsWith('/')) {
+    return baseUrl + url
+  }
+  return baseUrl + '/' + url
+}
+
 const serializeParams = (params = {}) => {
   return Object.keys(params)
     .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')

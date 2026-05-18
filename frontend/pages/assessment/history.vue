@@ -128,7 +128,6 @@ export default {
       return Object.keys(this.trends).length > 0
     },
     
-    // 为报表预计算 levelClass，避免模板中调用方法
     enrichedReports() {
       return this.reports.map(r => ({
         ...r,
@@ -136,7 +135,6 @@ export default {
       }))
     },
     
-    // 为趋势数据预计算 levelClass
     enrichedTrends() {
       const result = {}
       for (const [scaleCode, points] of Object.entries(this.trends)) {
@@ -211,7 +209,6 @@ export default {
     
     formatTrendDate(dateStr) {
       if (!dateStr) return ''
-      // 只显示月-日
       const parts = dateStr.split('-')
       if (parts.length >= 3) {
         return `${parseInt(parts[1])}/${parseInt(parts[2])}`
@@ -258,7 +255,6 @@ export default {
   }
 }
 
-// 统计卡片
 .stats-card {
   display: flex;
   background: $primary-gradient;
@@ -298,9 +294,13 @@ export default {
   }
 }
 
-// 趋势图
 .trend-section {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   
   .trend-group {
@@ -372,10 +372,14 @@ export default {
   }
 }
 
-// 时间线
 .history-section {
   .timeline-item {
-    @extend %card;
+    background: #ffffff;
+    border-radius: 32rpx;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: flex-start;
     padding: $spacing-lg;
@@ -460,7 +464,23 @@ export default {
 }
 
 .section-title {
-  @extend %section-title;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #4A4A4A;
+  margin-bottom: 24rpx;
+  position: relative;
+  padding-left: 20rpx;
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8rpx;
+    height: 32rpx;
+    background: #FF8C8C;
+    border-radius: 4rpx;
+  }
 }
 
 .empty {
@@ -481,7 +501,15 @@ export default {
   }
   
   .go-test-btn {
-    @extend %btn-primary;
+    background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+    color: #fff;
+    border-radius: 50rpx;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
     height: 90rpx;
     width: 360rpx;
     font-size: $font-md;

@@ -28,11 +28,11 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Autowired
     private RecommendationResultMapper recommendationResultMapper;
     
-    // 推荐算法权重（四路融合）
-    private static final double USER_CF_WEIGHT = 0.30;
-    private static final double ITEM_CF_WEIGHT = 0.25;
-    private static final double CONTENT_WEIGHT = 0.25;
-    private static final double PROFILE_WEIGHT = 0.20;
+    // 推荐算法权重（四路融合）- 大幅提升内容权重以响应实时心境
+    private static final double USER_CF_WEIGHT = 0.10;
+    private static final double ITEM_CF_WEIGHT = 0.10;
+    private static final double CONTENT_WEIGHT = 0.70;
+    private static final double PROFILE_WEIGHT = 0.10;
     
     // 多样性参数：每种类型最多推荐的比例
     private static final double MAX_SAME_TYPE_RATIO = 0.4;
@@ -47,40 +47,57 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     @Override
     public List<Map<String, Object>> getPersonalizedRecommendations(Long userId, int topN) {
-        topN = normalizeTopN(topN);
-        if (topN == 0) {
-            return Collections.emptyList();
+        // 强制设定推荐数量为 3
+        final int TARGET_COUNT = 3;
+        log.info("为用户{}生成个性化推荐，固定数量: {}", userId, TARGET_COUNT);
+        
+        // 演示环境优化：在获取推荐前，先强制刷新一次兴趣标签，确保日记标签立即生效
+        try {
+            updateUserInterestTags(userId);
+        } catch (Exception e) {
+            log.warn("静默刷新用户{}兴趣标签失败: {}", userId, e.getMessage());
         }
-        log.info("为用户{}生成个性化推荐，数量: {}", userId, topN);
         
-        // 使用四路混合推荐算法，获取更多候选资源
-        List<Map<String, Object>> recommendations = hybridRecommendation(userId, topN * 3);
+        // 1. 获取四路混合推荐结果 (多取一些用于过滤)
+        List<Map<String, Object>> recommendations = hybridRecommendation(userId, TARGET_COUNT * 5);
         
-        // 过滤掉不存在或未发布的资源
+        // 2. 补全资源详情
         enrichWithResourceDetails(recommendations);
         
-        // 多样性过滤：避免同类型资源过多
-        recommendations = applyDiversityFilter(recommendations, topN);
+        // 3. 多样性过滤 (尝试保留不同类型)
+        recommendations = applyDiversityFilter(recommendations, TARGET_COUNT);
         
-        // 如果推荐数量不足，先用心理画像推荐补充
-        if (recommendations.size() < topN) {
-            log.info("推荐数量不足({}<{})，使用心理画像推荐补充", recommendations.size(), topN);
-            List<Map<String, Object>> profileRecs = getProfileBasedRecommendations(userId, topN - recommendations.size());
+        // 4. 多级补偿，确保刚好达到 3 条
+        if (recommendations.size() < TARGET_COUNT) {
+            log.info("混合推荐不足 3 条，开始补偿");
+            
+            // 补偿 A: 心理画像
+            List<Map<String, Object>> profileRecs = getProfileBasedRecommendations(userId, TARGET_COUNT);
             enrichWithResourceDetails(profileRecs);
-            appendMissingRecommendations(recommendations, profileRecs, topN);
+            appendMissingRecommendations(recommendations, profileRecs, TARGET_COUNT);
+            
+            // 补偿 B: 内容推荐 (显式补充标签匹配)
+            if (recommendations.size() < TARGET_COUNT) {
+                List<Map<String, Object>> contentRecs = contentBasedRecommendation(userId, TARGET_COUNT);
+                appendMissingRecommendations(recommendations, contentRecs, TARGET_COUNT);
+            }
+            
+            // 补偿 C: 热门资源 (保底填充)
+            if (recommendations.size() < TARGET_COUNT) {
+                List<Map<String, Object>> hotResources = getHotResources(userId, TARGET_COUNT);
+                appendMissingRecommendations(recommendations, hotResources, TARGET_COUNT);
+            }
         }
         
-        // 仍然不足，使用热门资源补充
-        if (recommendations.size() < topN) {
-            log.info("推荐数量仍不足，使用热门资源补充");
-            List<Map<String, Object>> hotResources = getHotResources(userId, topN - recommendations.size());
-            appendMissingRecommendations(recommendations, hotResources, topN);
-        }
+        // 最终裁剪，确保只有 3 条
+        List<Map<String, Object>> finalResult = recommendations.stream()
+                .limit(TARGET_COUNT)
+                .collect(Collectors.toList());
         
         // 保存推荐结果到数据库
-        saveRecommendationResults(userId, recommendations.stream().limit(topN).collect(Collectors.toList()));
+        saveRecommendationResults(userId, finalResult);
         
-        return recommendations.stream().limit(topN).collect(Collectors.toList());
+        return finalResult;
     }
     
     /**
@@ -101,12 +118,14 @@ public class RecommendationServiceImpl implements RecommendationService {
         
         return resources.stream().map(resource -> {
             Map<String, Object> rec = new HashMap<>();
+            rec.put("id", resource.getId());
             rec.put("resourceId", resource.getId());
             rec.put("title", resource.getTitle());
             rec.put("type", resource.getType());
             rec.put("coverUrl", resource.getCoverUrl());
             rec.put("tags", resource.getTags());
             rec.put("difficulty", resource.getDifficulty());
+            rec.put("viewCount", resource.getViewCount());
             rec.put("finalScore", 0.3);
             rec.put("reasons", new ArrayList<>(Collections.singletonList("热门资源推荐")));
             rec.put("algorithm", "hot");
@@ -234,6 +253,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         return recommendations.stream()
                 .map(rec -> {
                     Map<String, Object> result = new HashMap<>();
+                    result.put("id", rec.get("id"));
                     result.put("resourceId", rec.get("id"));
                     result.put("title", rec.get("title"));
                     result.put("type", rec.get("type"));
@@ -266,6 +286,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         return recommendations.stream()
                 .map(rec -> {
                     Map<String, Object> result = new HashMap<>();
+                    result.put("id", rec.get("id"));
                     result.put("resourceId", rec.get("id"));
                     result.put("title", rec.get("title"));
                     result.put("type", rec.get("type"));
@@ -385,34 +406,61 @@ public class RecommendationServiceImpl implements RecommendationService {
     public void updateUserInterestTags(Long userId) {
         log.info("开始更新用户{}的兴趣标签", userId);
         
-        // 1. 获取用户最近30天的行为关键词统计
+        // 1. 基于用户行为提取兴趣标签
         List<Map<String, Object>> behaviorStats = ratingMapper.getUserBehaviorKeywordStats(
                 userId, INTEREST_DAYS, 20);
         
-        if (behaviorStats.isEmpty()) {
-            log.info("用户{}最近{}天无行为数据，跳过标签更新", userId, INTEREST_DAYS);
-            return;
+        int updatedCount = 0;
+        if (!behaviorStats.isEmpty()) {
+            double maxScore = behaviorStats.stream()
+                    .mapToDouble(s -> ((Number) s.get("aggregated_score")).doubleValue())
+                    .max().orElse(1.0);
+            
+            for (Map<String, Object> stat : behaviorStats) {
+                String keyword = (String) stat.get("keyword");
+                String category = (String) stat.get("category");
+                double rawScore = ((Number) stat.get("aggregated_score")).doubleValue();
+                double normalizedScore = Math.min((rawScore / maxScore) * 100, 100.0);
+                
+                int resourceCount = ((Number) stat.get("resource_count")).intValue();
+                if (resourceCount < 1) continue;
+                
+                ratingMapper.insertOrUpdateInterestTag(userId, keyword, "behavior", 
+                        category != null ? category : "general", normalizedScore);
+                updatedCount++;
+            }
         }
         
-        // 2. 归一化聚合分数到0-100范围
-        double maxScore = behaviorStats.stream()
-                .mapToDouble(s -> ((Number) s.get("aggregated_score")).doubleValue())
-                .max().orElse(1.0);
-        
-        int updatedCount = 0;
-        for (Map<String, Object> stat : behaviorStats) {
-            String keyword = (String) stat.get("keyword");
-            String category = (String) stat.get("category");
-            double rawScore = ((Number) stat.get("aggregated_score")).doubleValue();
-            double normalizedScore = Math.min((rawScore / maxScore) * 100, 100.0);
+        // 2. 基于情绪日记提取兴趣标签
+        List<Map<String, Object>> diaries = ratingMapper.getRecentDiaries(userId, INTEREST_DAYS);
+        for (Map<String, Object> diary : diaries) {
+            String moodTags = (String) diary.get("mood_tags");
+            String content = (String) diary.get("content");
             
-            // 至少浏览过1个资源才保留
-            int resourceCount = ((Number) stat.get("resource_count")).intValue();
-            if (resourceCount < 1) continue;
+            // 处理情绪标签
+            if (moodTags != null && !moodTags.isEmpty()) {
+                String[] tags = moodTags.split("[,，]");
+                for (String tag : tags) {
+                    tag = tag.trim();
+                    if (!tag.isEmpty()) {
+                        // 日记标签给予较高的初始兴趣分 (85分)
+                        ratingMapper.insertOrUpdateInterestTag(userId, tag, "diary", "emotion", 85.0);
+                        updatedCount++;
+                    }
+                }
+            }
             
-            ratingMapper.insertOrUpdateInterestTag(userId, keyword, "behavior", 
-                    category != null ? category : "general", normalizedScore);
-            updatedCount++;
+            // 简单的关键词提取
+            if (content != null) {
+                String[] demoKeywords = {"考试", "焦虑", "压力", "沟通", "人际", "社交", "复习", "学业", "室友", "疲惫", "失眠"};
+                for (String kw : demoKeywords) {
+                    if (content.contains(kw)) {
+                        // 匹配到的关键词给予 80分
+                        ratingMapper.insertOrUpdateInterestTag(userId, kw, "diary", "general", 80.0);
+                        updatedCount++;
+                    }
+                }
+            }
         }
         
         // 3. 清理过期的行为标签（超过60天未更新）
@@ -423,28 +471,35 @@ public class RecommendationServiceImpl implements RecommendationService {
     
     /**
      * Min-Max归一化评分到0-1范围
-     * 比原来的 Max-only 归一化更能区分低分项
      */
     private void normalizeScores(List<Map<String, Object>> recommendations) {
-        if (recommendations.isEmpty()) return;
+        if (recommendations == null || recommendations.isEmpty()) return;
         
-        double maxScore = recommendations.stream()
-                .mapToDouble(r -> ((Number) r.get("predictedScore")).doubleValue())
-                .max().orElse(1.0);
-        double minScore = recommendations.stream()
-                .mapToDouble(r -> ((Number) r.get("predictedScore")).doubleValue())
-                .min().orElse(0.0);
+        if (recommendations.size() == 1) {
+            recommendations.get(0).put("predictedScore", 1.0);
+            return;
+        }
+
+        double maxScore = -1.0;
+        double minScore = Double.MAX_VALUE;
+        
+        for (Map<String, Object> rec : recommendations) {
+            double score = ((Number) rec.get("predictedScore")).doubleValue();
+            if (score > maxScore) maxScore = score;
+            if (score < minScore) minScore = score;
+        }
         
         double range = maxScore - minScore;
-        if (range == 0) {
-            // 所有分数相同，统一设为0.5
+        if (range < 0.0001) {
             for (Map<String, Object> rec : recommendations) {
-                rec.put("predictedScore", 0.5);
+                rec.put("predictedScore", 1.0);
             }
         } else {
             for (Map<String, Object> rec : recommendations) {
                 double score = ((Number) rec.get("predictedScore")).doubleValue();
-                rec.put("predictedScore", (score - minScore) / range);
+                // 使用平滑归一化，确保最小值也有 0.2 的基础分
+                double normalized = 0.2 + 0.8 * (score - minScore) / range;
+                rec.put("predictedScore", normalized);
             }
         }
     }
@@ -493,18 +548,26 @@ public class RecommendationServiceImpl implements RecommendationService {
         Iterator<Map<String, Object>> iterator = recommendations.iterator();
         while (iterator.hasNext()) {
             Map<String, Object> rec = iterator.next();
-            Long resourceId = ((Number) rec.get("resourceId")).longValue();
+            Long resourceId = extractResourceId(rec);
+            
+            if (resourceId == null) {
+                iterator.remove();
+                continue;
+            }
+            
             EducationResource resource = resourceMapper.selectById(resourceId);
             
             if (resource == null || resource.getStatus() != 1) {
                 iterator.remove();
                 log.warn("推荐资源ID{}不存在或未发布，已移除", resourceId);
             } else {
+                rec.putIfAbsent("id", resource.getId());
                 rec.putIfAbsent("title", resource.getTitle());
                 rec.putIfAbsent("type", resource.getType());
                 rec.putIfAbsent("coverUrl", resource.getCoverUrl());
                 rec.putIfAbsent("tags", resource.getTags());
                 rec.putIfAbsent("difficulty", resource.getDifficulty());
+                rec.putIfAbsent("viewCount", resource.getViewCount());
             }
         }
     }
@@ -589,6 +652,9 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     private Long extractResourceId(Map<String, Object> rec) {
         Object resourceId = rec.get("resourceId");
+        if (resourceId == null) {
+            resourceId = rec.get("id");
+        }
         return resourceId instanceof Number ? ((Number) resourceId).longValue() : null;
     }
 }

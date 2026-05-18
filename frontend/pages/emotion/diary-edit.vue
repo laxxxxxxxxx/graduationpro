@@ -131,14 +131,18 @@ export default {
       }
       
       try {
-        uni.showLoading({ title: '保存中...' })
+        uni.showLoading({ title: '保存中...', mask: true })
+        
+        // 确保日期格式正确 (YYYY-MM-DD)
+        const submitData = { ...this.form }
+        console.log('提交日记数据:', submitData)
         
         if (this.diaryId) {
           // 更新
-          await updateDiary(this.diaryId, this.form)
+          await updateDiary(this.diaryId, submitData)
         } else {
           // 创建
-          await createDiary(this.form)
+          await createDiary(submitData)
         }
         
         uni.hideLoading()
@@ -150,6 +154,8 @@ export default {
       } catch (error) {
         uni.hideLoading()
         console.error('保存失败:', error)
+        const msg = error.message || (error.data && error.data.message) || '保存失败'
+        uni.showToast({ title: msg, icon: 'none', duration: 3000 })
       }
     }
   }
@@ -163,7 +169,12 @@ export default {
 }
 
 .form {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   padding: 40rpx;
   margin-bottom: $spacing-lg;
   
@@ -253,7 +264,15 @@ slider {
 }
 
 .submit-btn {
-  @extend %btn-primary;
+  background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+  color: #fff;
+  border-radius: 50rpx;
+  border: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
   width: 100%;
   height: 100rpx;
   font-size: $font-lg;

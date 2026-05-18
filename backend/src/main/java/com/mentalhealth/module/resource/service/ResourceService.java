@@ -33,8 +33,17 @@ public interface ResourceService {
     ResourceComment addComment(Long userId, Long resourceId, Long parentId, String content);
 
     // 删除评论
-    void deleteComment(Long commentId, Long userId);
+    void deleteComment(Long commentId, Long userId, boolean isAdmin);
 
     // 获取用户收藏列表
     List<EducationResource> getUserFavorites(Long userId);
+
+    // 获取用户点赞列表
+    List<EducationResource> getUserLikes(Long userId);
+
+    void createResource(EducationResource resource);
+
+    void updateResource(EducationResource resource);
+
+    void deleteResource(Long id);
 }

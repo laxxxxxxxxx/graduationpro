@@ -20,7 +20,7 @@
         
         <!-- 标签 -->
         <view class="tags" v-if="resource.tags">
-          <text class="tag" v-for="tag in resource.tags.split(',')" :key="tag">
+          <text class="tag" v-for="(tag, index) in resource.tags.split(',')" :key="index">
             {{ tag }}
           </text>
         </view>
@@ -40,15 +40,17 @@
       <!-- ========== 视频播放区域 ========== -->
       <view class="video-section" v-if="resource.type === 2">
         <!-- 有真实视频链接时显示播放器 -->
-        <view class="video-player" v-if="resource.mediaUrl">
+        <view class="video-player" v-if="resource.mediaUrl || resource.content">
           <video 
             class="video"
-            :src="resolveUrl(resource.mediaUrl)" 
+            :src="resolveUrl(resource.mediaUrl || resource.content)" 
             :poster="resolveCoverUrl(resource.coverUrl)"
             controls
             show-center-play-btn
             object-fit="contain"
             :title="resource.title"
+            @play="onVideoPlay"
+            @ended="onVideoEnded"
           ></video>
         </view>
         <!-- 无视频链接时显示占位提示 -->
@@ -65,16 +67,16 @@
 
       <!-- ========== 音频播放区域 ========== -->
       <view class="audio-section" v-if="resource.type === 3">
-        <view class="audio-player" v-if="resource.mediaUrl">
+        <view class="audio-player" v-if="resource.mediaUrl || resource.content">
           <view class="audio-card">
             <image class="audio-cover" :src="resolveCoverUrl(resource.coverUrl)" mode="aspectFill"></image>
             <view class="audio-info">
               <text class="audio-title">{{ resource.title }}</text>
               <text class="audio-duration" v-if="resource.duration">时长: {{ formatDuration(resource.duration) }}</text>
               <audio 
-                v-if="resource.mediaUrl"
+                v-if="resource.mediaUrl || resource.content"
                 style="width: 100%; margin-top: 10px;"
-                :src="resolveUrl(resource.mediaUrl)"
+                :src="resolveUrl(resource.mediaUrl || resource.content)"
                 :name="resource.title"
                 :poster="resolveCoverUrl(resource.coverUrl)"
                 controls
@@ -97,10 +99,10 @@
       
       <!-- ========== 课程类型 ========== -->
       <view class="course-section" v-if="resource.type === 4">
-        <view class="video-player" v-if="resource.mediaUrl">
+        <view class="video-player" v-if="resource.mediaUrl || resource.content">
           <video 
             class="video"
-            :src="resolveUrl(resource.mediaUrl)" 
+            :src="resolveUrl(resource.mediaUrl || resource.content)" 
             :poster="resolveCoverUrl(resource.coverUrl)"
             controls
             show-center-play-btn
@@ -192,6 +194,10 @@
     
     <!-- 底部操作栏 -->
     <view class="bottom-bar" v-if="resource">
+      <view class="action-item" v-if="isAdmin" @click="confirmDeleteResource">
+        <text class="action-icon">🗑️</text>
+        <text class="action-text">下架</text>
+      </view>
       <view class="action-item" @click="handleToggleLike">
         <text class="action-icon" :class="{active: isLiked}">{{ isLiked ? '❤️' : '🤍' }}</text>
         <text class="action-text" :class="{active: isLiked}">{{ resource.likeCount || 0 }}</text>
@@ -212,8 +218,8 @@
 </template>
 
 <script>
-import { getResourceDetail, recordStudy, toggleLike, toggleFavorite, getComments, addComment, deleteComment } from '@/api/resource'
-import { getApiBaseUrl } from '@/utils/request'
+import { getResourceDetail, recordStudy, toggleLike, toggleFavorite, getComments, addComment, deleteComment, deleteResource } from '@/api/resource'
+import { resolveUrl as requestResolveUrl } from '@/utils/request'
 
 const DEFAULT_COVER = '/static/images/resource-default-cover.png'
 
@@ -224,21 +230,30 @@ export default {
       isLiked: false,
       isFavorited: false,
       studyRecord: null,
-      progressStyle: '',
       comments: [],
       commentText: '',
       replyingTo: null,
       startTime: 0,
-      currentUserId: null
+      currentUserId: null,
+      loading: false,
+      loadError: false
     }
   },
-  
   computed: {
+    isAdmin() {
+      const userInfo = uni.getStorageSync('userInfo')
+      return userInfo && (userInfo.role === 3 || userInfo.username === 'admin')
+    },
+    progressStyle() {
+      if (this.studyRecord && this.studyRecord.progress != null) {
+        return 'width:' + this.studyRecord.progress + '%;'
+      }
+      return 'width:0%;'
+    }
   },
   
   onLoad(options) {
     this.startTime = Date.now()
-    // 获取当前用户ID
     const userInfo = uni.getStorageSync('userInfo')
     if (userInfo) {
       this.currentUserId = userInfo.id
@@ -252,24 +267,33 @@ export default {
   },
   
   methods: {
-    // 加载资源详情
     async loadResource(id) {
+      if (!id || id === 'undefined') {
+        uni.showToast({ title: '参数错误', icon: 'none' })
+        return
+      }
       try {
+        this.loading = true
+        this.loadError = false
         const data = await getResourceDetail(id)
+        if (!data || !data.resource) {
+          this.loadError = true
+          uni.showToast({ title: '资源不存在', icon: 'none' })
+          return
+        }
         this.resource = data.resource
         this.isLiked = data.isLiked || false
         this.isFavorited = data.isFavorited || false
         this.studyRecord = data.studyRecord || null
-        if (this.studyRecord && this.studyRecord.progress != null) {
-          this.progressStyle = 'width:' + this.studyRecord.progress + '%;'
-        }
       } catch (error) {
         console.error('加载资源失败:', error)
+        this.loadError = true
         uni.showToast({ title: '加载失败', icon: 'none' })
+      } finally {
+        this.loading = false
       }
     },
 
-    // 加载评论
     async loadComments(resourceId) {
       try {
         const data = await getComments(resourceId)
@@ -278,8 +302,31 @@ export default {
         console.error('加载评论失败:', error)
       }
     },
+
+    confirmDeleteResource() {
+      uni.showModal({
+        title: '确认下架',
+        content: '管理员，确定要下架这个资源吗？',
+        success: (res) => {
+          if (res.confirm) {
+            this.handleDeleteResource()
+          }
+        }
+      })
+    },
+
+    async handleDeleteResource() {
+      try {
+        await deleteResource(this.resource.id)
+        uni.showToast({ title: '已下架', icon: 'success' })
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1500)
+      } catch (error) {
+        console.error('下架失败:', error)
+      }
+    },
     
-    // 记录学习进度
     async recordStudyProgress() {
       if (!this.resource || !uni.getStorageSync('token')) return
       const duration = Math.floor((Date.now() - this.startTime) / 1000)
@@ -297,7 +344,6 @@ export default {
       return Math.min(100, Math.floor(duration / 60) * 10)
     },
     
-    // 标记完成
     async markCompleted() {
       if (!this.checkLogin()) return
       try {
@@ -312,7 +358,6 @@ export default {
       }
     },
     
-    // 点赞/取消点赞
     async handleToggleLike() {
       if (!this.checkLogin()) return
       try {
@@ -325,7 +370,6 @@ export default {
       }
     },
 
-    // 收藏/取消收藏
     async handleToggleFavorite() {
       if (!this.checkLogin()) return
       try {
@@ -338,14 +382,11 @@ export default {
       }
     },
 
-    // 聚焦评论输入框
     focusComment() {
       if (!this.checkLogin()) return
-      // 滚动到评论输入框
       uni.pageScrollTo({ selector: '.comment-input-box', duration: 300 })
     },
 
-    // 发表评论
     async handleAddComment() {
       if (!this.checkLogin()) return
       if (!this.commentText.trim()) return
@@ -358,7 +399,6 @@ export default {
         const comment = await addComment(this.resource.id, data)
         
         if (this.replyingTo) {
-          // 回复：添加到对应评论的replies中
           const target = this.comments.find(c => c.id === this.replyingTo.id)
           if (target) {
             if (!target.replies) target.replies = []
@@ -366,7 +406,6 @@ export default {
           }
           this.replyingTo = null
         } else {
-          // 顶级评论
           this.comments.unshift(comment)
         }
         
@@ -378,24 +417,20 @@ export default {
       }
     },
 
-    // 开始回复
     startReply(comment) {
       if (!this.checkLogin()) return
       this.replyingTo = comment
       this.commentText = ''
     },
 
-    // 取消回复
     cancelReply() {
       this.replyingTo = null
       this.commentText = ''
     },
 
-    // 删除评论
     async handleDeleteComment(commentId) {
       try {
         await deleteComment(commentId)
-        // 从列表中移除
         this.comments = this.comments.filter(c => c.id !== commentId)
         this.comments.forEach(c => {
           if (c.replies) {
@@ -409,12 +444,10 @@ export default {
       }
     },
 
-    // 判断评论是否属于当前用户
     isMyComment(comment) {
       return this.currentUserId && comment.userId === this.currentUserId
     },
 
-    // 检查登录
     checkLogin() {
       const token = uni.getStorageSync('token')
       if (!token) {
@@ -432,35 +465,22 @@ export default {
       return this.resolveUrl(url)
     },
 
-    // 解析URL
     resolveUrl(url) {
-      if (!url) return ''
-      if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:')) {
-        return url
-      }
-      if (url.startsWith('/')) {
-        return getApiBaseUrl() + url
-      }
-      return getApiBaseUrl() + '/' + url
+      return requestResolveUrl(url)
     },
 
-    // 视频开始播放
     onVideoPlay() {
       console.log('视频开始播放')
     },
 
-    // 视频播放结束
     onVideoEnded() {
-      // 视频看完自动标记完成
       if (this.resource.type === 2) {
         this.markCompleted()
       }
     },
 
-    // 格式化文章内容（处理可能存在的HTML标签问题）
     formatArticleContent(content) {
       if (!content) return ''
-      // 确保内容适合 rich-text 渲染
       return content.replace(/\n/g, '<br/>')
     },
     
@@ -507,8 +527,12 @@ export default {
 }
 
 .resource-content {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
   padding: 50rpx 40rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   
   .title {
     display: block;
@@ -801,15 +825,34 @@ export default {
 
 /* ========== 评论区域 ========== */
 .comment-section {
-  @extend %card;
+  background: #ffffff;
+  border-radius: 32rpx;
   padding: 40rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(255, 140, 140, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 
   .comment-header {
     margin-bottom: 40rpx;
     
     .comment-title {
-      @extend %section-title;
-      margin-bottom: 0;
+      font-size: 32rpx;
+      font-weight: 600;
+      color: #4A4A4A;
+      margin-bottom: 24rpx;
+      position: relative;
+      padding-left: 20rpx;
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8rpx;
+        height: 32rpx;
+        background: #FF8C8C;
+        border-radius: 4rpx;
+      }
     }
   }
 
@@ -991,8 +1034,15 @@ export default {
         width: 140rpx;
         height: 84rpx;
         line-height: 84rpx;
-        @extend %btn-primary;
-        border-radius: $radius-xl;
+        background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+        color: #fff;
+        border-radius: 50rpx;
+        border: none;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
         font-size: $font-md;
         padding: 0;
         margin: 0;
@@ -1061,9 +1111,20 @@ export default {
     height: 90rpx;
     line-height: 90rpx;
     margin-left: 24rpx;
-    @extend %btn-primary;
-    border-radius: $radius-xl;
+    background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+    color: #fff;
+    border-radius: 50rpx;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
     font-size: $font-md;
+    padding: 0;
+  }
+}
+</style>
     padding: 0;
   }
 }

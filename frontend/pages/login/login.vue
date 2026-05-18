@@ -189,7 +189,20 @@ export default {
   }
   
   .login-btn {
-    @extend %btn-primary;
+    background: $primary-gradient;
+    color: #fff;
+    border-radius: $radius-xl;
+    border: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 16rpx rgba(255, 140, 140, 0.2);
+    
+    &:active {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
     height: 100rpx;
     font-size: $font-lg;
     margin-top: $spacing-lg;

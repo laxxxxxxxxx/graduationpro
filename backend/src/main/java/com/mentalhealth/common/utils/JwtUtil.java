@@ -61,6 +61,14 @@ public class JwtUtil {
         Claims claims = getClaimsFromToken(token);
         return claims != null ? ((Number) claims.get("userId")).longValue() : null;
     }
+
+    /**
+     * 从Token中获取角色
+     */
+    public Integer getRoleFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims != null && claims.get("role") != null ? ((Number) claims.get("role")).intValue() : null;
+    }
     
     /**
      * 从Token中获取用户名

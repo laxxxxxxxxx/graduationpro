@@ -9,16 +9,6 @@
         <text class="label">匿名发布</text>
         <switch :checked="settings.anonymous" @change="onAnonymousChange" />
       </view>
-      
-      <view class="setting-item">
-        <text class="label">显示学习记录</text>
-        <switch :checked="settings.showLearning" @change="onShowLearningChange" />
-      </view>
-      
-      <view class="setting-item">
-        <text class="label">允许私信</text>
-        <switch :checked="settings.allowMessage" @change="onAllowMessageChange" />
-      </view>
     </view>
     
     <view class="tips">
@@ -28,11 +18,9 @@
 </template>
 
 <script>
-const STORAGE_KEY = 'privacySettings'
+const STORAGE_KEY = 'user_privacy_settings'
 const DEFAULT_SETTINGS = {
-  anonymous: true,
-  showLearning: false,
-  allowMessage: true
+  anonymous: true
 }
 
 export default {
@@ -55,16 +43,6 @@ export default {
   methods: {
     onAnonymousChange(e) {
       this.settings.anonymous = e.detail.value
-      this.saveSettings()
-    },
-    
-    onShowLearningChange(e) {
-      this.settings.showLearning = e.detail.value
-      this.saveSettings()
-    },
-    
-    onAllowMessageChange(e) {
-      this.settings.allowMessage = e.detail.value
       this.saveSettings()
     },
 
